@@ -9,7 +9,9 @@ export default function Navbar() {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/cards", label: "Cards" },
     { href: "/transactions", label: "Transactions" },
+    { href: "/deposits", label: "Deposits" },
     { href: "/api", label: "API" },
+    { href: "/admin", label: "Admin" },
   ];
 
   const isActive = (href: string) => {

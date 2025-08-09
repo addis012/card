@@ -1,7 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCardSchema, insertTransactionSchema } from "@shared/schema";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { 
+  insertCardSchema, 
+  insertTransactionSchema, 
+  insertUserSchema,
+  insertDepositSchema,
+  insertKycDocumentSchema
+} from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -129,6 +136,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(apiKey);
     } catch (error) {
       res.status(500).json({ message: "Failed to update API key" });
+    }
+  });
+
+  // User Registration
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const validatedData = insertUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(validatedData.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+      
+      const user = await storage.createUser(validatedData);
+      res.status(201).json({ message: "Registration successful", user: { id: user.id, username: user.username } });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to register user" });
+    }
+  });
+
+  // Login (simple version)
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user || user.password !== password) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      res.json({ user: { id: user.id, username: user.username, role: user.role, kycStatus: user.kycStatus } });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to login" });
+    }
+  });
+
+  // Deposits
+  app.get("/api/deposits", async (req, res) => {
+    try {
+      const userId = req.query.userId as string || DEFAULT_USER_ID;
+      const deposits = await storage.getDepositsByUserId(userId);
+      res.json(deposits);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch deposits" });
+    }
+  });
+
+  app.post("/api/deposits", async (req, res) => {
+    try {
+      const validatedData = insertDepositSchema.parse({
+        ...req.body,
+        userId: req.body.userId || DEFAULT_USER_ID,
+      });
+      const deposit = await storage.createDeposit(validatedData);
+      res.status(201).json(deposit);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid deposit data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create deposit" });
+    }
+  });
+
+  // KYC Documents
+  app.get("/api/kyc-documents", async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (userId) {
+        const documents = await storage.getKycDocumentsByUserId(userId);
+        res.json(documents);
+      } else {
+        const documents = await storage.getAllKycDocuments();
+        res.json(documents);
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch KYC documents" });
+    }
+  });
+
+  app.post("/api/kyc-documents", async (req, res) => {
+    try {
+      const validatedData = insertKycDocumentSchema.parse({
+        ...req.body,
+        userId: req.body.userId || DEFAULT_USER_ID,
+      });
+      const document = await storage.createKycDocument(validatedData);
+      res.status(201).json(document);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid document data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to upload KYC document" });
+    }
+  });
+
+  // Admin Routes
+  app.get("/api/admin/deposits", async (req, res) => {
+    try {
+      const deposits = await storage.getAllDeposits();
+      res.json(deposits);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch deposits" });
+    }
+  });
+
+  app.patch("/api/admin/deposits/:id", async (req, res) => {
+    try {
+      const updates = req.body;
+      if (updates.status === 'completed') {
+        updates.processedAt = new Date();
+        updates.processedBy = 'admin-1'; // Replace with actual admin ID
+      }
+      const deposit = await storage.updateDeposit(req.params.id, updates);
+      if (!deposit) {
+        return res.status(404).json({ message: "Deposit not found" });
+      }
+      res.json(deposit);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update deposit" });
+    }
+  });
+
+  app.get("/api/admin/kyc-documents", async (req, res) => {
+    try {
+      const documents = await storage.getAllKycDocuments();
+      res.json(documents);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch KYC documents" });
+    }
+  });
+
+  app.patch("/api/admin/kyc-documents/:id", async (req, res) => {
+    try {
+      const updates = req.body;
+      if (updates.status) {
+        updates.reviewedAt = new Date();
+        updates.reviewedBy = 'admin-1'; // Replace with actual admin ID
+      }
+      const document = await storage.updateKycDocument(req.params.id, updates);
+      if (!document) {
+        return res.status(404).json({ message: "KYC document not found" });
+      }
+      res.json(document);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update KYC document" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/kyc", async (req, res) => {
+    try {
+      const { kycStatus } = req.body;
+      const user = await storage.updateUser(req.params.id, { kycStatus });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user KYC status" });
+    }
+  });
+
+  // Object Storage Routes
+  app.post("/api/objects/upload", async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error downloading object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
     }
   });
 

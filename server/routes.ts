@@ -695,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Return user data without password for frontend
       const { password, ...userResponse } = user;
-      res.status(201).json(userResponse);
+      res.status(201).json({ message: "Registration successful", user: userResponse });
     } catch (error) {
       console.error("Error creating user:", error);
       if (error instanceof z.ZodError) {
@@ -703,6 +703,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.status(500).json({ message: "Failed to create user" });
     }
+  });
+
+  // Login endpoint
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      // Find user
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // Verify password
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      
+      // Store user session (simple session storage)
+      req.session = req.session || {};
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      };
+      
+      const { password: _, ...userResponse } = user;
+      res.json({ message: "Login successful", user: userResponse });
+    } catch (error) {
+      console.error("Error during login:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Get current user
+  app.get("/api/auth/me", async (req, res) => {
+    if (req.session?.user) {
+      res.json(req.session.user);
+    } else {
+      res.status(401).json({ message: "Not authenticated" });
+    }
+  });
+
+  // Logout endpoint
+  app.post("/api/auth/logout", async (req, res) => {
+    req.session = null;
+    res.json({ message: "Logged out successfully" });
   });
 
   // Card address management endpoints

@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, User, Lock } from "lucide-react";
 import { z } from "zod";
@@ -31,22 +31,18 @@ export default function Login() {
     },
   });
 
+  const { login } = useAuth();
+
   const loginMutation = useMutation({
     mutationFn: async (data: LoginForm) => {
-      return await apiRequest("/api/auth/login", "POST", data);
+      await login(data.username, data.password);
     },
-    onSuccess: (data: any) => {
+    onSuccess: () => {
       toast({
         title: "Login Successful",
-        description: `Welcome back, ${data.user.username}!`,
+        description: "Welcome back to CardFlow Pro!",
       });
-      
-      // Redirect based on user role
-      if (data.user.role === 'admin') {
-        setLocation("/admin");
-      } else {
-        setLocation("/dashboard");
-      }
+      setLocation("/dashboard");
     },
     onError: (error: Error) => {
       toast({

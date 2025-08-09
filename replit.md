@@ -4,6 +4,21 @@
 
 CardFlow Pro is a comprehensive card issuing and management platform that provides secure, scalable card services for businesses. The application enables users to create and manage virtual and physical cards, track transactions, and integrate with their systems through a robust API. Built as a full-stack web application, it features a modern React frontend with Express.js backend, designed for professional card provider services.
 
+## Recent Changes (August 2025)
+
+### Enhanced Registration & KYC Workflow
+- **Two-Step Registration**: Users now upload ID/passport documents during account creation
+- **Object Storage Integration**: Secure document storage with ObjectUploader component
+- **Admin Card Creation Workflow**: Admin reviews documents → creates cards via Strowallet API → approves with card numbers
+- **Enhanced Deposits Page**: Tabbed interface for ETB deposits and KYC document management
+
+### Workflow Process
+1. **User Registration**: Account creation + mandatory document upload (passport/national ID)
+2. **Admin Review**: Admin reviews uploaded documents and user details
+3. **Card Creation**: Admin uses Strowallet API to create cards based on verified identity
+4. **Card Approval**: Admin inputs card numbers from Strowallet for user visibility
+5. **ETB Processing**: Manual ETB to USDT conversion with admin oversight
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

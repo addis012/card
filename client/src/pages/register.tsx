@@ -5,18 +5,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { insertUserSchema, type InsertUser } from "@shared/schema";
+import { insertUserSchema, insertKycDocumentSchema, type InsertUser, type InsertKycDocument } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Phone, Mail, User, Lock } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
+import { UserPlus, Phone, Mail, User, Lock, Shield, Upload, FileText, ArrowRight } from "lucide-react";
 
 export default function Register() {
   const { toast } = useToast();
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [currentStep, setCurrentStep] = useState<"account" | "documents">("account");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState<{passport?: string, id?: string}>({});
 
   const form = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
@@ -32,15 +38,25 @@ export default function Register() {
     },
   });
 
+  const kycForm = useForm<InsertKycDocument>({
+    resolver: zodResolver(insertKycDocumentSchema),
+    defaultValues: {
+      documentType: "passport",
+      documentUrl: "",
+      status: "pending"
+    },
+  });
+
   const registerMutation = useMutation({
     mutationFn: async (data: InsertUser) => {
       return await apiRequest("/api/auth/register", "POST", data);
     },
-    onSuccess: () => {
-      setIsSubmitted(true);
+    onSuccess: (response: any) => {
+      setUserId(response.id);
+      setCurrentStep("documents");
       toast({
-        title: "Registration Successful",
-        description: "Your account has been created. You can now login and submit your documents for verification.",
+        title: "Account Created",
+        description: "Now please upload your identity documents to complete registration.",
       });
     },
     onError: (error: Error) => {
@@ -52,6 +68,70 @@ export default function Register() {
     },
   });
 
+  const kycMutation = useMutation({
+    mutationFn: async (data: InsertKycDocument) => {
+      return await apiRequest("/api/kyc-documents", "POST", { ...data, userId });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Document Uploaded",
+        description: "Document uploaded successfully. Continue with additional documents or complete registration.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Upload handlers
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("/api/objects/upload", "POST", {});
+    return {
+      method: "PUT" as const,
+      url: response.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>, docType: "passport" | "id") => {
+    if (result.successful.length > 0) {
+      const uploadedFile = result.successful[0];
+      const uploadURL = uploadedFile.uploadURL;
+      
+      setUploadedDocuments(prev => ({
+        ...prev,
+        [docType]: uploadURL
+      }));
+      
+      toast({
+        title: "File Uploaded",
+        description: `Your ${docType === "passport" ? "passport" : "ID document"} has been uploaded successfully.`,
+      });
+    }
+  };
+
+  const submitDocument = async (docType: "passport" | "national_id") => {
+    const docUrl = uploadedDocuments[docType === "national_id" ? "id" : "passport"];
+    if (!docUrl) return;
+
+    kycMutation.mutate({
+      documentType: docType,
+      documentUrl: docUrl,
+      status: "pending"
+    });
+  };
+
+  const completeRegistration = () => {
+    setIsSubmitted(true);
+    toast({
+      title: "Registration Complete!",
+      description: "Your account and documents have been submitted for review. You can now login.",
+    });
+  };
+
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-gray-900 flex items-center justify-center p-4">
@@ -62,11 +142,26 @@ export default function Register() {
             </div>
             <CardTitle className="text-2xl text-green-600 dark:text-green-400">Registration Complete!</CardTitle>
             <CardDescription>
-              Your account has been created successfully. You can now login and submit your KYC documents for verification.
+              Your account and identity documents have been submitted for review. You can now login to track your verification status.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                      What happens next?
+                    </p>
+                    <ul className="text-blue-700 dark:text-blue-200 space-y-1">
+                      <li>• Admin will review your documents</li>
+                      <li>• Cards will be created upon approval</li>
+                      <li>• You'll receive login access once approved</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
               <Link href="/login">
                 <Button className="w-full">Go to Login</Button>
               </Link>
@@ -82,17 +177,34 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-gray-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <UserPlus className="w-6 h-6 text-blue-600" />
-            <CardTitle className="text-2xl">Create Account</CardTitle>
+      <Card className="w-full max-w-2xl">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+            <UserPlus className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
+          <CardTitle className="text-2xl">Create Account</CardTitle>
           <CardDescription>
-            Register for CardFlow Pro to start managing your digital cards and deposits
+            Join CardFlow Pro to access professional card services
           </CardDescription>
+          <div className="flex justify-center items-center gap-4 mt-6">
+            <div className={`flex items-center gap-2 ${currentStep === "account" ? "text-blue-600" : "text-gray-400"}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === "account" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"}`}>
+                1
+              </div>
+              <span className="text-sm font-medium">Account Info</span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-gray-400" />
+            <div className={`flex items-center gap-2 ${currentStep === "documents" ? "text-blue-600" : "text-gray-400"}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === "documents" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"}`}>
+                2
+              </div>
+              <span className="text-sm font-medium">ID Documents</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
+          {currentStep === "account" ? (
+            <div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -244,6 +356,138 @@ export default function Register() {
               </Link>
             </p>
           </div>
+          </div>
+          ) : (
+            // Document Upload Form
+            <div className="space-y-6">
+              <div className="text-center">
+                <Shield className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Upload Identity Documents</h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Please upload your passport and national ID to complete registration
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      Passport
+                    </CardTitle>
+                    <CardDescription>
+                      Upload a clear photo of your passport
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ObjectUploader
+                      maxNumberOfFiles={1}
+                      maxFileSize={10485760}
+                      onGetUploadParameters={handleGetUploadParameters}
+                      onComplete={(result) => handleUploadComplete(result, "passport")}
+                      buttonClassName="w-full"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Upload className="w-4 h-4" />
+                        <span>Choose Passport File</span>
+                      </div>
+                    </ObjectUploader>
+                    
+                    {uploadedDocuments.passport && (
+                      <div className="mt-4 space-y-2">
+                        <p className="text-sm text-green-600 dark:text-green-400">
+                          ✓ Passport uploaded successfully
+                        </p>
+                        <Button
+                          onClick={() => submitDocument("passport")}
+                          disabled={kycMutation.isPending}
+                          size="sm"
+                          className="w-full"
+                        >
+                          {kycMutation.isPending ? "Submitting..." : "Submit Passport"}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-dashed border-gray-300 dark:border-gray-600">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      National ID
+                    </CardTitle>
+                    <CardDescription>
+                      Upload a clear photo of your national ID
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ObjectUploader
+                      maxNumberOfFiles={1}
+                      maxFileSize={10485760}
+                      onGetUploadParameters={handleGetUploadParameters}
+                      onComplete={(result) => handleUploadComplete(result, "id")}
+                      buttonClassName="w-full"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Upload className="w-4 h-4" />
+                        <span>Choose ID File</span>
+                      </div>
+                    </ObjectUploader>
+                    
+                    {uploadedDocuments.id && (
+                      <div className="mt-4 space-y-2">
+                        <p className="text-sm text-green-600 dark:text-green-400">
+                          ✓ National ID uploaded successfully
+                        </p>
+                        <Button
+                          onClick={() => submitDocument("national_id")}
+                          disabled={kycMutation.isPending}
+                          size="sm"
+                          className="w-full"
+                        >
+                          {kycMutation.isPending ? "Submitting..." : "Submit National ID"}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-900 p-4 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-amber-600 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-900 dark:text-amber-100 mb-1">
+                      Document Requirements
+                    </p>
+                    <ul className="text-amber-700 dark:text-amber-200 space-y-1">
+                      <li>• High-quality photo or scan</li>
+                      <li>• All text must be clearly readable</li>
+                      <li>• Documents must be valid and unexpired</li>
+                      <li>• Maximum file size: 10MB each</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={completeRegistration}
+                  className="flex-1"
+                  disabled={!uploadedDocuments.passport && !uploadedDocuments.id}
+                >
+                  Complete Registration
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep("account")}
+                >
+                  Back
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

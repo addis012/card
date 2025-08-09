@@ -10,6 +10,7 @@ import {
   insertKycDocumentSchema
 } from "@shared/schema";
 import { z } from "zod";
+import bcrypt from "bcrypt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const DEFAULT_USER_ID = 'user-1'; // For demo purposes
@@ -347,6 +348,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Object Storage Routes
+  app.post("/api/objects/upload", async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  // KYC Document Routes
+  app.get("/api/kyc-documents", async (req, res) => {
+    try {
+      const documents = await storage.getAllKycDocuments();
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching KYC documents:", error);
+      res.status(500).json({ message: "Failed to fetch KYC documents" });
+    }
+  });
+
+  app.get("/api/kyc-documents/user/:userId", async (req, res) => {
+    try {
+      const documents = await storage.getKycDocumentsByUserId(req.params.userId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching user KYC documents:", error);
+      res.status(500).json({ message: "Failed to fetch user KYC documents" });
+    }
+  });
+
+  app.post("/api/kyc-documents", async (req, res) => {
+    try {
+      const validatedData = insertKycDocumentSchema.parse(req.body);
+      
+      // Process the uploaded document URL if needed
+      if (validatedData.documentUrl) {
+        const objectStorageService = new ObjectStorageService();
+        const normalizedPath = objectStorageService.normalizeObjectEntityPath(validatedData.documentUrl);
+        validatedData.documentUrl = normalizedPath;
+      }
+      
+      const document = await storage.createKycDocument(validatedData);
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error creating KYC document:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid document data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create KYC document" });
+    }
+  });
+
+  app.put("/api/kyc-documents/:id", async (req, res) => {
+    try {
+      const updates = req.body;
+      if (updates.reviewedAt === undefined && (updates.status === 'approved' || updates.status === 'rejected')) {
+        updates.reviewedAt = new Date();
+      }
+      
+      const document = await storage.updateKycDocument(req.params.id, updates);
+      if (!document) {
+        return res.status(404).json({ message: "KYC document not found" });
+      }
+      res.json(document);
+    } catch (error) {
+      console.error("Error updating KYC document:", error);
+      res.status(500).json({ message: "Failed to update KYC document" });
+    }
+  });
+
+  // Enhanced user registration with proper response
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const validatedData = insertUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(validatedData.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      const userData = { ...validatedData, password: hashedPassword };
+      
+      const user = await storage.createUser(userData);
+      
+      // Return user data without password for frontend
+      const { password, ...userResponse } = user;
+      res.status(201).json(userResponse);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create user" });
     }
   });
 

@@ -124,19 +124,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const card = await storage.createCard({
         userId: userId,
         cardNumber: strowalletCard.card_number,
-        maskedNumber: `****-****-****-${strowalletCard.card_number.slice(-4)}`,
         expiryDate: `${strowalletCard.expiry_month}/${strowalletCard.expiry_year}`,
         cvv: strowalletCard.cvv,
         cardType: cardType.toLowerCase(),
         status: "pending",
-        balance: 0,
+        balance: "0.00",
         spendingLimit: spendingLimit || 1000,
+      });
+
+      // Update with Strowallet ID and masked number
+      const updatedCard = await storage.updateCard(card.id, {
         strowalletCardId: strowalletCard.card_id,
+        maskedNumber: `**** **** **** ${strowalletCard.card_number.slice(-4)}`,
       });
 
       res.status(201).json({
         message: "Card created successfully via Strowallet",
-        card: card,
+        card: updatedCard,
         strowalletResponse: strowalletCard,
       });
     } catch (error) {
@@ -281,6 +285,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ user: { id: user.id, username: user.username, role: user.role, kycStatus: user.kycStatus } });
     } catch (error) {
       res.status(500).json({ message: "Failed to login" });
+    }
+  });
+
+  // Get card transaction history from Strowallet
+  app.get("/api/cards/:cardId/strowallet-transactions", async (req, res) => {
+    try {
+      const cardId = req.params.cardId;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      // Find the card to get the Strowallet card ID
+      const card = await storage.getCard(cardId);
+      if (!card) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+
+      if (!card.strowalletCardId) {
+        return res.status(400).json({ message: "Card is not linked to Strowallet" });
+      }
+
+      const strowalletService = new StrowalletService();
+      const transactionsResponse = await strowalletService.getCardTransactions({
+        card_id: card.strowalletCardId,
+        limit,
+        offset,
+      });
+
+      res.json(transactionsResponse);
+    } catch (error) {
+      console.error("Error fetching card transactions:", error);
+      res.status(500).json({ message: "Failed to fetch card transactions" });
+    }
+  });
+
+  // Fund a card via Strowallet
+  app.post("/api/cards/:cardId/fund", async (req, res) => {
+    try {
+      const cardId = req.params.cardId;
+      const { amount, currency = "USD" } = req.body;
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Valid amount is required" });
+      }
+
+      // Find the card to get the Strowallet card ID
+      const card = await storage.getCard(cardId);
+      if (!card) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+
+      if (!card.strowalletCardId) {
+        return res.status(400).json({ message: "Card is not linked to Strowallet" });
+      }
+
+      const strowalletService = new StrowalletService();
+      const fundingResponse = await strowalletService.fundCard({
+        card_id: card.strowalletCardId,
+        amount: parseFloat(amount),
+        currency,
+      });
+
+      // Update local card balance
+      const updatedBalance = (parseFloat(card.balance) + parseFloat(amount)).toFixed(2);
+      await storage.updateCard(cardId, { balance: updatedBalance });
+
+      res.json({
+        message: "Card funded successfully",
+        transaction: fundingResponse,
+        newBalance: updatedBalance,
+      });
+    } catch (error) {
+      console.error("Error funding card:", error);
+      res.status(500).json({ message: "Failed to fund card" });
+    }
+  });
+
+  // Get detailed card information from Strowallet
+  app.get("/api/cards/:cardId/strowallet-details", async (req, res) => {
+    try {
+      const cardId = req.params.cardId;
+
+      // Find the card to get the Strowallet card ID
+      const card = await storage.getCard(cardId);
+      if (!card) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+
+      if (!card.strowalletCardId) {
+        return res.status(400).json({ message: "Card is not linked to Strowallet" });
+      }
+
+      const strowalletService = new StrowalletService();
+      const cardDetails = await strowalletService.getCardDetails({
+        card_id: card.strowalletCardId,
+      });
+
+      // Update local card data with fresh information from Strowallet
+      await storage.updateCard(cardId, {
+        balance: cardDetails.balance.toString(),
+        status: cardDetails.is_blocked ? "frozen" : "active",
+      });
+
+      res.json({
+        localCard: card,
+        strowalletDetails: cardDetails,
+      });
+    } catch (error) {
+      console.error("Error fetching card details:", error);
+      res.status(500).json({ message: "Failed to fetch card details" });
+    }
+  });
+
+  // Block/Unblock a card
+  app.put("/api/cards/:cardId/block", async (req, res) => {
+    try {
+      const cardId = req.params.cardId;
+      const { blocked } = req.body;
+
+      if (typeof blocked !== "boolean") {
+        return res.status(400).json({ message: "blocked field must be a boolean" });
+      }
+
+      // Find the card to get the Strowallet card ID
+      const card = await storage.getCard(cardId);
+      if (!card) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+
+      if (!card.strowalletCardId) {
+        return res.status(400).json({ message: "Card is not linked to Strowallet" });
+      }
+
+      const strowalletService = new StrowalletService();
+      const newStatus = blocked ? "BLOCKED" : "ACTIVE";
+      
+      await strowalletService.updateCardStatus(card.strowalletCardId, newStatus);
+
+      // Update local card status
+      const localStatus = blocked ? "frozen" : "active";
+      await storage.updateCard(cardId, { status: localStatus });
+
+      res.json({
+        message: `Card ${blocked ? "blocked" : "unblocked"} successfully`,
+        cardId,
+        status: localStatus,
+      });
+    } catch (error) {
+      console.error("Error updating card block status:", error);
+      res.status(500).json({ message: "Failed to update card block status" });
     }
   });
 

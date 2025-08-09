@@ -32,6 +32,13 @@ CardFlow Pro is a comprehensive card issuing and management platform that provid
 - **Updated Card Schema**: Enhanced with Strowallet integration fields
 - **Admin APIs**: Complete admin workflow endpoints for card management
 
+### Additional Strowallet Features ✅
+- **Transaction History**: Real-time transaction data via `/api/cards/:cardId/strowallet-transactions`
+- **Card Funding**: Direct funding from wallet to card via `/api/cards/:cardId/fund`  
+- **Card Details**: Live card information including balance via `/api/cards/:cardId/strowallet-details`
+- **Card Blocking/Unblocking**: Security controls via `/api/cards/:cardId/block`
+- **USDT Deposits**: Support for USDT deposits with automatic conversion to card funding
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

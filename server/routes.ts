@@ -387,14 +387,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/kyc-documents", async (req, res) => {
     try {
       const validatedData = insertKycDocumentSchema.parse(req.body);
-      
-      // Process the uploaded document URL if needed
-      if (validatedData.documentUrl) {
-        const objectStorageService = new ObjectStorageService();
-        const normalizedPath = objectStorageService.normalizeObjectEntityPath(validatedData.documentUrl);
-        validatedData.documentUrl = normalizedPath;
-      }
-      
       const document = await storage.createKycDocument(validatedData);
       res.status(201).json(document);
     } catch (error) {

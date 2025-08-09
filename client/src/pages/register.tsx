@@ -107,11 +107,16 @@ export default function Register() {
 
   // Upload handlers
   const handleGetUploadParameters = async () => {
-    const response = await apiRequest("/api/objects/upload", "POST", {});
-    return {
-      method: "PUT" as const,
-      url: response.uploadURL,
-    };
+    try {
+      const response = await apiRequest("/api/objects/upload", "POST", {});
+      return {
+        method: "PUT" as const,
+        url: response.uploadURL,
+      };
+    } catch (error) {
+      console.error("Failed to get upload URL:", error);
+      throw new Error("Failed to get upload URL");
+    }
   };
 
   const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>, docType: "passport" | "id") => {

@@ -49,7 +49,16 @@ export default function Register() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: InsertUser) => {
-      return await apiRequest("/api/auth/register", "POST", data);
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Registration failed");
+      }
+      return response.json();
     },
     onSuccess: (response: any) => {
       setUserId(response.id);
@@ -70,7 +79,16 @@ export default function Register() {
 
   const kycMutation = useMutation({
     mutationFn: async (data: InsertKycDocument) => {
-      return await apiRequest("/api/kyc-documents", "POST", { ...data, userId });
+      const response = await fetch("/api/kyc-documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, userId }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "KYC document submission failed");
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({

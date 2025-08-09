@@ -46,16 +46,17 @@ export const kycDocuments = pgTable("kyc_documents", {
 export const cards = pgTable("cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // 'virtual' | 'physical'
-  status: text("status").notNull().default('active'), // 'active' | 'frozen' | 'cancelled'
-  maskedNumber: text("masked_number").notNull(),
+  cardNumber: text("card_number"), // Full card number (stored securely)
+  maskedNumber: text("masked_number"), // Masked display version
+  expiryDate: text("expiry_date"), // MM/YY format
+  cvv: text("cvv"), // CVV code
+  cardType: text("card_type").notNull().default('virtual'), // 'virtual' | 'physical'
+  status: text("status").notNull().default('pending'), // 'pending' | 'active' | 'frozen' | 'cancelled'
   balance: decimal("balance", { precision: 15, scale: 2 }).notNull().default('0.00'),
-  limit: decimal("limit", { precision: 15, scale: 2 }).notNull(),
+  spendingLimit: decimal("spending_limit", { precision: 15, scale: 2 }).notNull().default('1000.00'),
   currency: text("currency").notNull().default('USDT'),
-  expiryMonth: integer("expiry_month").notNull(),
-  expiryYear: integer("expiry_year").notNull(),
   strowalletCardId: text("strowallet_card_id"), // Strowallet API card reference
+  approvedAt: timestamp("approved_at"), // When admin approved the card
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

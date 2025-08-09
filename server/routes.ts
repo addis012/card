@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { StrowalletService } from "./strowallet";
 import { 
   insertCardSchema, 
   insertTransactionSchema, 
@@ -79,6 +80,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete card" });
+    }
+  });
+
+  // Admin: Create card via Strowallet API based on KYC documents
+  app.post("/api/admin/create-card", async (req, res) => {
+    try {
+      const { userId, cardType = "VIRTUAL", spendingLimit } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      // Get user information
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user has approved KYC documents
+      const kycDocuments = await storage.getKycDocumentsByUserId(userId);
+      const hasApprovedDocs = kycDocuments.some(doc => doc.status === "approved");
+      
+      if (!hasApprovedDocs) {
+        return res.status(400).json({ message: "User must have approved KYC documents before card creation" });
+      }
+
+      // Initialize Strowallet service
+      const strowalletService = new StrowalletService();
+      
+      // Create card via Strowallet API
+      const strowalletCard = await strowalletService.createCard({
+        customer_id: userId,
+        card_type: cardType,
+        currency: "USD",
+        spending_limit: spendingLimit,
+        customer_name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
+        email: user.email || `${user.username}@example.com`,
+        phone: user.phone || undefined,
+      });
+
+      // Store card in our database
+      const card = await storage.createCard({
+        userId: userId,
+        cardNumber: strowalletCard.card_number,
+        maskedNumber: `****-****-****-${strowalletCard.card_number.slice(-4)}`,
+        expiryDate: `${strowalletCard.expiry_month}/${strowalletCard.expiry_year}`,
+        cvv: strowalletCard.cvv,
+        cardType: cardType.toLowerCase(),
+        status: "pending",
+        balance: 0,
+        spendingLimit: spendingLimit || 1000,
+        strowalletCardId: strowalletCard.card_id,
+      });
+
+      res.status(201).json({
+        message: "Card created successfully via Strowallet",
+        card: card,
+        strowalletResponse: strowalletCard,
+      });
+    } catch (error) {
+      console.error("Error creating card via Strowallet:", error);
+      res.status(500).json({ 
+        message: "Failed to create card via Strowallet", 
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Admin: Approve card and make it visible to user
+  app.put("/api/admin/approve-card/:cardId", async (req, res) => {
+    try {
+      const { cardId } = req.params;
+      const { cardNumber, expiryDate, cvv } = req.body;
+
+      const card = await storage.getCard(cardId);
+      if (!card) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+
+      // Update card with provided details and activate it
+      const updatedCard = await storage.updateCard(cardId, {
+        cardNumber: cardNumber || card.cardNumber,
+        expiryDate: expiryDate || card.expiryDate,
+        cvv: cvv || card.cvv,
+        status: "active",
+        approvedAt: new Date(),
+      });
+
+      // Update Strowallet card status if we have the ID
+      if (card.strowalletCardId) {
+        try {
+          const strowalletService = new StrowalletService();
+          await strowalletService.updateCardStatus(card.strowalletCardId, "ACTIVE");
+        } catch (strowalletError) {
+          console.error("Error updating Strowallet card status:", strowalletError);
+          // Continue with local approval even if Strowallet update fails
+        }
+      }
+
+      res.json({
+        message: "Card approved and activated successfully",
+        card: updatedCard,
+      });
+    } catch (error) {
+      console.error("Error approving card:", error);
+      res.status(500).json({ message: "Failed to approve card" });
     }
   });
 

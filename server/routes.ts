@@ -110,14 +110,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const strowalletService = new StrowalletService();
       
       // Create card via Strowallet API
+      const cardHolderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
       const strowalletCard = await strowalletService.createCard({
-        customer_id: userId,
-        card_type: cardType,
-        currency: "USD",
-        spending_limit: spendingLimit,
-        customer_name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
-        email: user.email || `${user.username}@example.com`,
-        phone: user.phone || undefined,
+        name_on_card: cardHolderName,
+        card_type: "visa",
+        public_key: process.env.STROWALLET_PUBLIC_KEY || "",
+        amount: (spendingLimit || 1000).toString(),
+        customerEmail: user.email || `${user.username}@example.com`,
+        mode: process.env.NODE_ENV === "development" ? "sandbox" : undefined,
       });
 
       // Store card in our database
@@ -702,6 +702,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  // Card address management endpoints
+  app.get("/api/cards/:id/address", async (req, res) => {
+    try {
+      const card = await storage.getCard(req.params.id);
+      
+      if (!card) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+
+      const addressInfo = {
+        cardId: card.id,
+        nameOnCard: card.nameOnCard || "",
+        billingAddress: card.billingAddress || "",
+        billingCity: card.billingCity || "",
+        billingState: card.billingState || "",
+        billingZip: card.billingZip || "",
+        billingCountry: card.billingCountry || "US",
+      };
+
+      res.json(addressInfo);
+    } catch (error) {
+      console.error("Error fetching card address:", error);
+      res.status(500).json({ message: "Failed to fetch card address" });
+    }
+  });
+
+  app.put("/api/cards/:id/address", async (req, res) => {
+    try {
+      const { 
+        billingAddress, 
+        billingCity, 
+        billingState, 
+        billingZip, 
+        billingCountry, 
+        nameOnCard 
+      } = req.body;
+
+      const card = await storage.updateCard(req.params.id, {
+        billingAddress: billingAddress || null,
+        billingCity: billingCity || null,
+        billingState: billingState || null,
+        billingZip: billingZip || null,
+        billingCountry: billingCountry || null,
+        nameOnCard: nameOnCard || null
+      });
+
+      if (!card) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+
+      res.json({
+        message: "Card address updated successfully",
+        card,
+        addressInfo: {
+          nameOnCard: card.nameOnCard,
+          billingAddress: card.billingAddress,
+          billingCity: card.billingCity,
+          billingState: card.billingState,
+          billingZip: card.billingZip,
+          billingCountry: card.billingCountry,
+        }
+      });
+    } catch (error) {
+      console.error("Error updating card address:", error);
+      res.status(500).json({ message: "Failed to update card address" });
+    }
+  });
+
+  // Enhanced admin card creation with address support
+  app.post("/api/admin/create-card-with-address", async (req, res) => {
+    try {
+      const { 
+        userId, 
+        cardType = "VIRTUAL", 
+        spendingLimit,
+        billingAddress,
+        billingCity,
+        billingState,
+        billingZip,
+        billingCountry,
+        nameOnCard
+      } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      // Get user information
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user has approved KYC documents
+      const kycDocuments = await storage.getKycDocumentsByUserId(userId);
+      const hasApprovedDocs = kycDocuments.some(doc => doc.status === "approved");
+      
+      if (!hasApprovedDocs) {
+        return res.status(400).json({ message: "User must have approved KYC documents before card creation" });
+      }
+
+      // Initialize Strowallet service
+      const strowalletService = new StrowalletService();
+      
+      // Create card via Strowallet API with address information
+      const cardHolderName = nameOnCard || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
+      const strowalletCard = await strowalletService.createCard({
+        name_on_card: cardHolderName,
+        card_type: "visa",
+        public_key: process.env.STROWALLET_PUBLIC_KEY || "",
+        amount: (spendingLimit || 1000).toString(),
+        customerEmail: user.email || `${user.username}@example.com`,
+        mode: process.env.NODE_ENV === "development" ? "sandbox" : undefined,
+        billing_address: billingAddress,
+        billing_city: billingCity,
+        billing_state: billingState,
+        billing_zip: billingZip,
+        billing_country: billingCountry || "US",
+      });
+
+      // Store card in our database with address information
+      const card = await storage.createCard({
+        userId: userId,
+        cardNumber: strowalletCard.card_number,
+        expiryDate: `${strowalletCard.expiry_month}/${strowalletCard.expiry_year}`,
+        cvv: strowalletCard.cvv,
+        cardType: cardType.toLowerCase(),
+        status: "pending",
+        balance: "0.00",
+        spendingLimit: spendingLimit?.toString() || "1000.00",
+        strowalletCardId: strowalletCard.card_id,
+        billingAddress: billingAddress || null,
+        billingCity: billingCity || null,
+        billingState: billingState || null,
+        billingZip: billingZip || null,
+        billingCountry: billingCountry || null,
+        nameOnCard: cardHolderName,
+      });
+
+      // Update with masked number
+      const updatedCard = await storage.updateCard(card.id, {
+        maskedNumber: `**** **** **** ${strowalletCard.card_number.slice(-4)}`,
+      });
+
+      res.status(201).json({
+        message: "Card created successfully with address information",
+        card: updatedCard,
+        strowalletResponse: strowalletCard,
+        addressInfo: {
+          nameOnCard: cardHolderName,
+          billingAddress,
+          billingCity,
+          billingState,
+          billingZip,
+          billingCountry,
+        }
+      });
+    } catch (error) {
+      console.error("Error creating card with address:", error);
+      res.status(500).json({ 
+        message: "Failed to create card with address", 
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

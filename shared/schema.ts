@@ -56,6 +56,15 @@ export const cards = pgTable("cards", {
   spendingLimit: decimal("spending_limit", { precision: 15, scale: 2 }).notNull().default('1000.00'),
   currency: text("currency").notNull().default('USDT'),
   strowalletCardId: text("strowallet_card_id"), // Strowallet API card reference
+  
+  // Address fields for card holder
+  billingAddress: text("billing_address"), // Street address
+  billingCity: text("billing_city"), // City
+  billingState: text("billing_state"), // State/Province
+  billingZip: text("billing_zip"), // Postal/ZIP code
+  billingCountry: text("billing_country"), // Country
+  nameOnCard: text("name_on_card"), // Name as it appears on the card
+  
   approvedAt: timestamp("approved_at"), // When admin approved the card
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

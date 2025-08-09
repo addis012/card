@@ -39,6 +39,13 @@ CardFlow Pro is a comprehensive card issuing and management platform that provid
 - **Card Blocking/Unblocking**: Security controls via `/api/cards/:cardId/block`
 - **USDT Deposits**: Support for USDT deposits with automatic conversion to card funding
 
+### Card Address Management ✅
+- **Address Details API**: Get/update card billing address via `/api/cards/:cardId/address`
+- **Enhanced Card Creation**: Admin can create cards with complete address information
+- **Address Form Component**: Professional frontend interface for managing card addresses
+- **Complete Address Fields**: Name on card, street address, city, state, ZIP, and country
+- **Strowallet Integration**: Address information included in card creation API calls
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

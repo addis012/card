@@ -11,6 +11,7 @@ import Register from "@/pages/register";
 import Login from "@/pages/login";
 import AdminPanel from "@/pages/admin";
 import Deposits from "@/pages/deposits";
+import CardAddress from "@/pages/card-address";
 import NotFound from "@/pages/not-found";
 import Navbar from "@/components/layout/navbar";
 
@@ -28,6 +29,7 @@ function Router() {
         <Route path="/register" component={Register} />
         <Route path="/login" component={Login} />
         <Route path="/admin" component={AdminPanel} />
+        <Route path="/cards/:id/address" component={CardAddress} />
         <Route component={NotFound} />
       </Switch>
     </div>

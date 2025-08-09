@@ -5,13 +5,20 @@ const STROWALLET_BASE_URL = "https://strowallet.com/api/bitvcard";
 
 // Strowallet card creation request schema
 const strowalletCreateCardSchema = z.object({
-  customer_id: z.string(),
-  card_type: z.enum(["VIRTUAL", "PHYSICAL"]),
-  currency: z.string().default("USD"),
-  spending_limit: z.number().optional(),
-  customer_name: z.string(),
-  email: z.string().email(),
-  phone: z.string().optional(),
+  name_on_card: z.string(),
+  card_type: z.string().default("visa"),
+  public_key: z.string(),
+  amount: z.string(),
+  customerEmail: z.string().email(),
+  mode: z.string().optional(),
+  developer_code: z.string().optional(),
+  
+  // Additional address fields for enhanced card creation
+  billing_address: z.string().optional(),
+  billing_city: z.string().optional(),
+  billing_state: z.string().optional(),
+  billing_zip: z.string().optional(),
+  billing_country: z.string().optional(),
 });
 
 // Strowallet card response schema

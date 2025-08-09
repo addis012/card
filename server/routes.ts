@@ -251,42 +251,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User Registration
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const validatedData = insertUserSchema.parse(req.body);
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(validatedData.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
-      }
-      
-      const user = await storage.createUser(validatedData);
-      res.status(201).json({ message: "Registration successful", user: { id: user.id, username: user.username } });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to register user" });
-    }
-  });
+  // User Registration (using the enhanced version below)
+  // Registration endpoint removed - using the enhanced version below
 
-  // Login (simple version)
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      const user = await storage.getUserByUsername(username);
-      
-      if (!user || user.password !== password) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-      
-      res.json({ user: { id: user.id, username: user.username, role: user.role, kycStatus: user.kycStatus } });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to login" });
-    }
-  });
+  // Login endpoint removed - using the enhanced version below
 
   // Get card transaction history from Strowallet
   app.get("/api/cards/:cardId/strowallet-transactions", async (req, res) => {
@@ -618,8 +586,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ uploadURL });
     } catch (error) {
-      console.error("Error generating upload URL:", error);
-      res.status(500).json({ error: "Failed to generate upload URL" });
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
     }
   });
 
@@ -726,16 +694,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
       
-      // Store user session (simple session storage)
-      req.session = req.session || {};
-      req.session.user = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role
-      };
+      // Store user session
+      if (req.session) {
+        req.session.user = {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        };
+      }
       
       const { password: _, ...userResponse } = user;
       res.json({ message: "Login successful", user: userResponse });
@@ -756,7 +725,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Logout endpoint
   app.post("/api/auth/logout", async (req, res) => {
-    req.session = null;
+    if (req.session) {
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Session destruction error:", err);
+        }
+      });
+    }
+    res.clearCookie('connect.sid');
     res.json({ message: "Logged out successfully" });
   });
 

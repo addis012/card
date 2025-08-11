@@ -463,6 +463,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin card creation using Strowallet API
+  app.post("/api/admin/cards/create-strowallet", async (req, res) => {
+    try {
+      const validatedData = insertCardSchema.parse({
+        ...req.body,
+        userId: req.body.userId || DEFAULT_USER_ID,
+      });
+      
+      // Create card via Strowallet API
+      const strowalletService = new StrowalletService();
+      const strowalletRequest = {
+        name_on_card: validatedData.nameOnCard || "Card Holder",
+        card_type: "visa",
+        public_key: process.env.STROWALLET_PUBLIC_KEY || "",
+        amount: req.body.amount || "100",
+        customerEmail: req.body.customerEmail || "user@example.com",
+        billing_address: validatedData.billingAddress || "",
+        billing_city: validatedData.billingCity || "",
+        billing_state: validatedData.billingState || "",
+        billing_zip: validatedData.billingZip || "",
+        billing_country: validatedData.billingCountry || "US",
+      };
+      
+      const strowalletCard = await strowalletService.createCard(strowalletRequest);
+      
+      // Save card to local database with Strowallet details
+      const cardData = {
+        ...validatedData,
+        cardNumber: strowalletCard.card_number,
+        expiryDate: `${strowalletCard.expiry_month}/${strowalletCard.expiry_year}`,
+        cvv: strowalletCard.cvv,
+        status: "active",
+        strowalletCardId: strowalletCard.card_id,
+        balance: req.body.amount || "100",
+      };
+      
+      const card = await storage.createCard(cardData);
+      
+      res.status(201).json({
+        message: "Card created successfully via Strowallet",
+        card,
+        strowalletDetails: strowalletCard
+      });
+    } catch (error) {
+      console.error("Error creating Strowallet card:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid card data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create card via Strowallet" });
+    }
+  });
+
   // Admin Routes
   app.get("/api/admin/deposits", async (req, res) => {
     try {

@@ -60,7 +60,7 @@ export default function Cards() {
           onClick={() => setShowCreateCard(true)}
           className="bg-trust-blue hover:bg-blue-700"
         >
-          + Create New Card
+          + Create Card via Strowallet
         </Button>
       </div>
 

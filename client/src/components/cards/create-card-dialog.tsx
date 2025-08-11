@@ -31,14 +31,15 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const createCardSchema = z.object({
-  name: z.string().min(1, "Card name is required"),
-  type: z.enum(["virtual", "physical"]),
-  cardNumber: z.string().regex(/^\d{16}$/, "Card number must be 16 digits"),
-  cvv: z.string().regex(/^\d{3}$/, "CVV must be 3 digits"),
-  expiryMonth: z.number().min(1).max(12),
-  expiryYear: z.number().min(new Date().getFullYear()),
-  limit: z.string().min(1, "Limit is required"),
-  currency: z.string().default("USD"),
+  name_on_card: z.string().min(1, "Name on card is required"),
+  card_type: z.string().default("visa"),
+  amount: z.string().min(1, "Initial funding amount is required"),
+  customerEmail: z.string().email("Valid email is required"),
+  billing_address: z.string().optional(),
+  billing_city: z.string().optional(),
+  billing_state: z.string().optional(),
+  billing_zip: z.string().optional(),
+  billing_country: z.string().default("US"),
 });
 
 type CreateCardForm = z.infer<typeof createCardSchema>;
@@ -55,20 +56,21 @@ export default function CreateCardDialog({ open, onOpenChange }: CreateCardDialo
   const form = useForm<CreateCardForm>({
     resolver: zodResolver(createCardSchema),
     defaultValues: {
-      name: "",
-      type: "virtual",
-      cardNumber: "",
-      cvv: "",
-      expiryMonth: new Date().getMonth() + 1,
-      expiryYear: new Date().getFullYear() + 3,
-      limit: "5000",
-      currency: "USD",
+      name_on_card: "",
+      card_type: "visa",
+      amount: "100",
+      customerEmail: "",
+      billing_address: "",
+      billing_city: "",
+      billing_state: "",
+      billing_zip: "",
+      billing_country: "US",
     },
   });
 
   const createCardMutation = useMutation({
     mutationFn: (data: CreateCardForm) =>
-      apiRequest("POST", "/api/cards", data),
+      apiRequest("/api/admin/cards/create-strowallet", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -92,19 +94,15 @@ export default function CreateCardDialog({ open, onOpenChange }: CreateCardDialo
     createCardMutation.mutate(data);
   };
 
-  const generateTestCardNumber = () => {
-    // Generate a valid test card number (Visa test number)
-    form.setValue("cardNumber", "4242424242424242");
-    form.setValue("cvv", "123");
-  };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create New Card</DialogTitle>
+          <DialogTitle>Create New Card via Strowallet</DialogTitle>
           <DialogDescription>
-            Create a new virtual or physical card for your business.
+            Create a new card and fund it directly from your wallet balance using the Strowallet API.
           </DialogDescription>
         </DialogHeader>
 
@@ -112,12 +110,12 @@ export default function CreateCardDialog({ open, onOpenChange }: CreateCardDialo
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="name"
+              name="name_on_card"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Card Name</FormLabel>
+                  <FormLabel>Name on Card</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Marketing Expenses" {...field} />
+                    <Input placeholder="John Doe" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -126,21 +124,27 @@ export default function CreateCardDialog({ open, onOpenChange }: CreateCardDialo
 
             <FormField
               control={form.control}
-              name="type"
+              name="customerEmail"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Card Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select card type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="virtual">Virtual Card</SelectItem>
-                      <SelectItem value="physical">Physical Card</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Customer Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="customer@example.com" type="email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Initial Funding Amount (USD)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="100" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -149,23 +153,27 @@ export default function CreateCardDialog({ open, onOpenChange }: CreateCardDialo
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="cardNumber"
+                name="billing_city"
                 render={({ field }) => (
-                  <FormItem className="col-span-2">
-                    <FormLabel>Card Number</FormLabel>
-                    <div className="flex space-x-2">
-                      <FormControl>
-                        <Input placeholder="1234567812345678" {...field} />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={generateTestCardNumber}
-                        className="whitespace-nowrap"
-                      >
-                        Generate Test
-                      </Button>
-                    </div>
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <FormControl>
+                      <Input placeholder="New York" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="billing_state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>State</FormLabel>
+                    <FormControl>
+                      <Input placeholder="NY" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -198,29 +206,16 @@ export default function CreateCardDialog({ open, onOpenChange }: CreateCardDialo
                   </FormItem>
                 )}
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+              
               <FormField
                 control={form.control}
-                name="expiryMonth"
+                name="billing_address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Expiry Month</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(parseInt(value))}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Month" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <SelectItem key={i + 1} value={(i + 1).toString()}>
-                            {(i + 1).toString().padStart(2, '0')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123 Main St" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -228,27 +223,13 @@ export default function CreateCardDialog({ open, onOpenChange }: CreateCardDialo
 
               <FormField
                 control={form.control}
-                name="expiryYear"
+                name="billing_zip"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Expiry Year</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(parseInt(value))}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Year" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Array.from({ length: 10 }, (_, i) => {
-                          const year = new Date().getFullYear() + i;
-                          return (
-                            <SelectItem key={year} value={year.toString()}>
-                              {year}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>ZIP Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="12345" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -268,7 +249,7 @@ export default function CreateCardDialog({ open, onOpenChange }: CreateCardDialo
                 className="bg-trust-blue hover:bg-blue-700"
                 disabled={createCardMutation.isPending}
               >
-                {createCardMutation.isPending ? "Creating..." : "Create Card"}
+                {createCardMutation.isPending ? "Creating Card via Strowallet..." : "Create Card & Fund from Wallet"}
               </Button>
             </div>
           </form>

@@ -138,6 +138,10 @@ export const insertCardSchema = z.object({
   billingZip: z.string().optional(),
   billingCountry: z.string().optional(),
   nameOnCard: z.string().optional(),
+  cardNumber: z.string().optional(),
+  maskedNumber: z.string().optional(),
+  expiryDate: z.string().optional(),
+  cvv: z.string().optional(),
 });
 
 export const insertTransactionSchema = z.object({

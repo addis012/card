@@ -14,24 +14,34 @@ import AdminPanel from "@/pages/admin";
 import Deposits from "@/pages/deposits";
 import CardAddress from "@/pages/card-address";
 import NotFound from "@/pages/not-found";
-import Navbar from "@/components/layout/navbar";
+import Sidebar from "@/components/layout/sidebar";
+import MobileHeader from "@/components/layout/mobile-header";
+import { useState } from "react";
 import LandingPage from "@/pages/landing";
 
 function AuthenticatedRoutes() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/cards" component={Cards} />
-        <Route path="/transactions" component={Transactions} />
-        <Route path="/deposits" component={Deposits} />
-        <Route path="/api" component={ApiSettings} />
-        <Route path="/admin" component={AdminPanel} />
-        <Route path="/cards/:id/address" component={CardAddress} />
-        <Route component={NotFound} />
-      </Switch>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
+      <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      
+      <div className="lg:ml-80 min-h-screen">
+        <main className="p-4 lg:p-8">
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/cards" component={Cards} />
+            <Route path="/transactions" component={Transactions} />
+            <Route path="/deposits" component={Deposits} />
+            <Route path="/api" component={ApiSettings} />
+            <Route path="/admin" component={AdminPanel} />
+            <Route path="/cards/:id/address" component={CardAddress} />
+            <Route component={NotFound} />
+          </Switch>
+        </main>
+      </div>
     </div>
   );
 }

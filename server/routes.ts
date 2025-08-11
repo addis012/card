@@ -902,6 +902,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // File Upload Routes - Store files in database
+  app.post("/api/files/upload", async (req, res) => {
+    try {
+      const { fileName, fileData, contentType, fileSize, userId, documentType } = req.body;
+      
+      if (!fileName || !fileData || !contentType || !fileSize || !userId || !documentType) {
+        return res.status(400).json({ 
+          message: "Missing required fields: fileName, fileData, contentType, fileSize, userId, documentType" 
+        });
+      }
+
+      // Validate file size (limit to 10MB)
+      if (fileSize > 10 * 1024 * 1024) {
+        return res.status(400).json({ message: "File size too large. Maximum 10MB allowed." });
+      }
+
+      // Create KYC document with file data
+      const kycDocument = await storage.createKycDocument({
+        userId,
+        documentType,
+        fileName,
+        fileData,
+        contentType,
+        fileSize
+      });
+
+      res.status(201).json({ 
+        message: "File uploaded successfully",
+        documentId: kycDocument._id,
+        fileName: kycDocument.fileName 
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  // Get uploaded file from database
+  app.get("/api/files/:documentId", async (req, res) => {
+    try {
+      const document = await storage.getKYCDocumentById(req.params.documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Return file data as base64
+      res.json({
+        fileName: document.fileName,
+        contentType: document.contentType,
+        fileSize: document.fileSize,
+        fileData: document.fileData,
+        status: document.status
+      });
+    } catch (error) {
+      console.error("Error retrieving file:", error);
+      res.status(500).json({ message: "Failed to retrieve file" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

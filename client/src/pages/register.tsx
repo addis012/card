@@ -13,8 +13,7 @@ import { insertUserSchema, insertKycDocumentSchema, type InsertUser, type Insert
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
+import { DatabaseFileUploader } from "@/components/DatabaseFileUploader";
 import { UserPlus, Phone, Mail, User, Lock, Shield, Upload, FileText, ArrowRight } from "lucide-react";
 
 export default function Register() {
@@ -22,7 +21,7 @@ export default function Register() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [currentStep, setCurrentStep] = useState<"account" | "documents">("account");
   const [userId, setUserId] = useState<string | null>(null);
-  const [uploadedDocuments, setUploadedDocuments] = useState<{passport?: string, id?: string}>({});
+  const [uploadedDocuments, setUploadedDocuments] = useState<{passport?: string, id_card?: string}>({});
 
   const form = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
@@ -106,44 +105,26 @@ export default function Register() {
   });
 
   // Upload handlers
-  const handleGetUploadParameters = async () => {
-    try {
-      const response = await apiRequest("/api/objects/upload", "POST", {});
-      return {
-        method: "PUT" as const,
-        url: response.uploadURL,
-      };
-    } catch (error) {
-      console.error("Failed to get upload URL:", error);
-      throw new Error("Failed to get upload URL");
-    }
+  const handleUploadComplete = (documentId: string, docType: "passport" | "id_card") => {
+    setUploadedDocuments(prev => ({
+      ...prev,
+      [docType]: documentId
+    }));
+    
+    toast({
+      title: "File Uploaded",
+      description: `Your ${docType === "passport" ? "passport" : "ID document"} has been uploaded successfully to database.`,
+    });
   };
 
-  const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>, docType: "passport" | "id") => {
-    if (result.successful.length > 0) {
-      const uploadedFile = result.successful[0];
-      const uploadURL = uploadedFile.uploadURL;
-      
-      setUploadedDocuments(prev => ({
-        ...prev,
-        [docType]: uploadURL
-      }));
-      
-      toast({
-        title: "File Uploaded",
-        description: `Your ${docType === "passport" ? "passport" : "ID document"} has been uploaded successfully.`,
-      });
-    }
-  };
+  const submitDocument = async (docType: "passport" | "id_card") => {
+    const documentId = uploadedDocuments[docType];
+    if (!documentId || !userId) return;
 
-  const submitDocument = async (docType: "passport" | "national_id") => {
-    const docUrl = uploadedDocuments[docType === "national_id" ? "id" : "passport"];
-    if (!docUrl) return;
-
-    kycMutation.mutate({
-      documentType: docType,
-      documentUrl: docUrl,
-      status: "pending"
+    // Document is already uploaded to database, just update status
+    toast({
+      title: "Document Submitted",
+      description: `Your ${docType === "passport" ? "passport" : "ID card"} is now under review.`,
     });
   };
 
@@ -403,18 +384,12 @@ export default function Register() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={10485760}
-                      onGetUploadParameters={handleGetUploadParameters}
-                      onComplete={(result) => handleUploadComplete(result, "passport")}
-                      buttonClassName="w-full"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Upload className="w-4 h-4" />
-                        <span>Choose Passport File</span>
-                      </div>
-                    </ObjectUploader>
+                    <DatabaseFileUploader
+                      userId={userId || ""}
+                      documentType="passport"
+                      onUploadComplete={(documentId) => handleUploadComplete(documentId, "passport")}
+                      maxFileSize={10}
+                    />
                     
                     {uploadedDocuments.passport && (
                       <div className="mt-4 space-y-2">
@@ -445,26 +420,20 @@ export default function Register() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ObjectUploader
-                      maxNumberOfFiles={1}
-                      maxFileSize={10485760}
-                      onGetUploadParameters={handleGetUploadParameters}
-                      onComplete={(result) => handleUploadComplete(result, "id")}
-                      buttonClassName="w-full"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Upload className="w-4 h-4" />
-                        <span>Choose ID File</span>
-                      </div>
-                    </ObjectUploader>
+                    <DatabaseFileUploader
+                      userId={userId || ""}
+                      documentType="id_card"
+                      onUploadComplete={(documentId) => handleUploadComplete(documentId, "id_card")}
+                      maxFileSize={10}
+                    />
                     
-                    {uploadedDocuments.id && (
+                    {uploadedDocuments.id_card && (
                       <div className="mt-4 space-y-2">
                         <p className="text-sm text-green-600 dark:text-green-400">
                           ✓ National ID uploaded successfully
                         </p>
                         <Button
-                          onClick={() => submitDocument("national_id")}
+                          onClick={() => submitDocument("id_card")}
                           disabled={kycMutation.isPending}
                           size="sm"
                           className="w-full"
@@ -498,7 +467,7 @@ export default function Register() {
                 <Button
                   onClick={completeRegistration}
                   className="flex-1"
-                  disabled={!uploadedDocuments.passport && !uploadedDocuments.id}
+                  disabled={!uploadedDocuments.passport && !uploadedDocuments.id_card}
                 >
                   Complete Registration
                 </Button>

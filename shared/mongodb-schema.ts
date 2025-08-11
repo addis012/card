@@ -66,7 +66,11 @@ export interface IKYCDocument extends Document {
   _id: string;
   userId: string;
   documentType: 'passport' | 'id_card' | 'driving_license' | 'selfie';
-  documentUrl: string;
+  documentUrl?: string; // Optional for backward compatibility
+  fileName: string;
+  fileData: string; // Base64 encoded file data
+  contentType: string; // MIME type
+  fileSize: number; // File size in bytes
   status: 'pending' | 'approved' | 'rejected';
   reviewedBy?: string;
   reviewNotes?: string;
@@ -77,7 +81,11 @@ export interface IKYCDocument extends Document {
 const kycDocumentSchema = new Schema<IKYCDocument>({
   userId: { type: String, ref: 'User', required: true },
   documentType: { type: String, enum: ['passport', 'id_card', 'driving_license', 'selfie'], required: true },
-  documentUrl: { type: String, required: true },
+  documentUrl: { type: String }, // Optional for backward compatibility
+  fileName: { type: String, required: true },
+  fileData: { type: String, required: true }, // Base64 encoded file
+  contentType: { type: String, required: true },
+  fileSize: { type: Number, required: true },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   reviewedBy: { type: String, ref: 'User' },
   reviewNotes: { type: String },
@@ -210,7 +218,11 @@ export const insertDepositSchema = z.object({
 export const insertKYCDocumentSchema = z.object({
   userId: z.string().min(1),
   documentType: z.enum(['passport', 'id_card', 'driving_license', 'selfie']),
-  documentUrl: z.string().url(),
+  documentUrl: z.string().optional(), // Optional for backward compatibility
+  fileName: z.string().min(1),
+  fileData: z.string().min(1), // Base64 encoded file data
+  contentType: z.string().min(1),
+  fileSize: z.number().positive(),
 });
 
 export const insertCardSchema = z.object({

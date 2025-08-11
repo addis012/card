@@ -60,7 +60,8 @@ export default function Register() {
       return response.json();
     },
     onSuccess: (response: any) => {
-      setUserId(response.id);
+      const userId = response.user?._id || response.user?.id || response._id || response.id;
+      setUserId(userId);
       setCurrentStep("documents");
       toast({
         title: "Account Created",

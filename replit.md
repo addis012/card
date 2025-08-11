@@ -6,7 +6,16 @@ CardFlow Pro is a comprehensive card issuing and management platform that provid
 
 ## Recent Changes (August 2025)
 
-### Database Migration to MongoDB Complete ✅ (Latest)
+### Database File Storage System Complete ✅ (Latest)
+- **File Storage in Database**: Files now stored directly in MongoDB as Base64 encoded data
+- **Enhanced KYC Schema**: Updated document schema to store file metadata and Base64 content
+- **New Upload API**: Created `/api/files/upload` and `/api/files/:documentId` endpoints
+- **DatabaseFileUploader Component**: Built React component for seamless database file uploads
+- **Updated Registration Flow**: Registration page now uses database storage instead of object storage
+- **Increased Payload Limits**: Express server configured for 50MB file uploads
+- **Complete File Management**: Upload, store, and retrieve files from MongoDB with metadata
+
+### Database Migration to MongoDB Complete ✅
 - **Complete Database Migration**: Successfully migrated from PostgreSQL to MongoDB Atlas
 - **MongoDB Atlas Integration**: Connected to cloud MongoDB database with connection string stored securely
 - **Mongoose ORM**: Implemented complete Mongoose schemas and models replacing Drizzle ORM

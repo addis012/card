@@ -178,14 +178,7 @@ export class MongoStorage implements IStorage {
     return documents.map(doc => doc.toObject());
   }
 
-  async getKYCDocumentById(id: string): Promise<SelectKYCDocument | null> {
-    try {
-      const document = await KYCDocument.findById(id);
-      return document ? document.toObject() : null;
-    } catch (error) {
-      return null;
-    }
-  }
+
 
   // Card operations
   async createCard(cardData: InsertCard): Promise<SelectCard> {

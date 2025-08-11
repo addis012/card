@@ -4,11 +4,8 @@ import {
   type Transaction, type InsertTransaction, 
   type ApiKey, type InsertApiKey,
   type Deposit, type InsertDeposit,
-  type KycDocument, type InsertKycDocument,
-  users, cards, transactions, apiKeys, deposits, kycDocuments
+  type KycDocument, type InsertKycDocument
 } from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -50,180 +47,7 @@ export interface IStorage {
   updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined>;
 }
 
-export class DatabaseStorage implements IStorage {
-  // User methods
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
-  }
-
-  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
-    const [user] = await db
-      .update(users)
-      .set(updates)
-      .where(eq(users.id, id))
-      .returning();
-    return user || undefined;
-  }
-
-  // Card methods
-  async getCard(id: string): Promise<Card | undefined> {
-    const [card] = await db.select().from(cards).where(eq(cards.id, id));
-    return card || undefined;
-  }
-
-  async getCardsByUserId(userId: string): Promise<Card[]> {
-    return await db.select().from(cards).where(eq(cards.userId, userId));
-  }
-
-  async createCard(insertCard: InsertCard): Promise<Card> {
-    const maskedNumber = `**** **** **** ${insertCard.cardNumber.slice(-4)}`;
-    const { cardNumber, cvv, ...cardData } = insertCard;
-    
-    const [card] = await db
-      .insert(cards)
-      .values({ 
-        ...cardData, 
-        maskedNumber,
-        balance: '0.00'
-      })
-      .returning();
-    return card;
-  }
-
-  async updateCard(id: string, updates: Partial<Card>): Promise<Card | undefined> {
-    const [card] = await db
-      .update(cards)
-      .set(updates)
-      .where(eq(cards.id, id))
-      .returning();
-    return card || undefined;
-  }
-
-  async deleteCard(id: string): Promise<boolean> {
-    const result = await db.delete(cards).where(eq(cards.id, id));
-    return result.rowCount > 0;
-  }
-
-  // Transaction methods
-  async getTransaction(id: string): Promise<Transaction | undefined> {
-    const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
-    return transaction || undefined;
-  }
-
-  async getTransactionsByCardId(cardId: string): Promise<Transaction[]> {
-    return await db.select().from(transactions).where(eq(transactions.cardId, cardId));
-  }
-
-  async getTransactionsByUserId(userId: string): Promise<Transaction[]> {
-    const userCards = await this.getCardsByUserId(userId);
-    const cardIds = userCards.map(card => card.id);
-    
-    if (cardIds.length === 0) return [];
-    
-    return await db.select().from(transactions);
-  }
-
-  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const [transaction] = await db
-      .insert(transactions)
-      .values(insertTransaction)
-      .returning();
-    return transaction;
-  }
-
-  // API Key methods
-  async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
-    return await db.select().from(apiKeys).where(eq(apiKeys.userId, userId));
-  }
-
-  async createApiKey(insertApiKey: InsertApiKey): Promise<ApiKey> {
-    const [apiKey] = await db
-      .insert(apiKeys)
-      .values(insertApiKey)
-      .returning();
-    return apiKey;
-  }
-
-  async updateApiKey(id: string, updates: Partial<ApiKey>): Promise<ApiKey | undefined> {
-    const [apiKey] = await db
-      .update(apiKeys)
-      .set(updates)
-      .where(eq(apiKeys.id, id))
-      .returning();
-    return apiKey || undefined;
-  }
-
-  // Deposit methods
-  async getDeposit(id: string): Promise<Deposit | undefined> {
-    const [deposit] = await db.select().from(deposits).where(eq(deposits.id, id));
-    return deposit || undefined;
-  }
-
-  async getDepositsByUserId(userId: string): Promise<Deposit[]> {
-    return await db.select().from(deposits).where(eq(deposits.userId, userId));
-  }
-
-  async getAllDeposits(): Promise<Deposit[]> {
-    return await db.select().from(deposits);
-  }
-
-  async createDeposit(insertDeposit: InsertDeposit): Promise<Deposit> {
-    const [deposit] = await db
-      .insert(deposits)
-      .values(insertDeposit)
-      .returning();
-    return deposit;
-  }
-
-  async updateDeposit(id: string, updates: Partial<Deposit>): Promise<Deposit | undefined> {
-    const [deposit] = await db
-      .update(deposits)
-      .set(updates)
-      .where(eq(deposits.id, id))
-      .returning();
-    return deposit || undefined;
-  }
-
-  // KYC methods
-  async getKycDocumentsByUserId(userId: string): Promise<KycDocument[]> {
-    return await db.select().from(kycDocuments).where(eq(kycDocuments.userId, userId));
-  }
-
-  async getAllKycDocuments(): Promise<KycDocument[]> {
-    return await db.select().from(kycDocuments);
-  }
-
-  async createKycDocument(insertDocument: InsertKycDocument): Promise<KycDocument> {
-    const [document] = await db
-      .insert(kycDocuments)
-      .values(insertDocument)
-      .returning();
-    return document;
-  }
-
-  async updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined> {
-    const [document] = await db
-      .update(kycDocuments)
-      .set(updates)
-      .where(eq(kycDocuments.id, id))
-      .returning();
-    return document || undefined;
-  }
-}
+// DatabaseStorage class removed - using MemStorage for Replit environment
 
 export class MemStorage implements IStorage {
   private users: Map<string, User> = new Map();
@@ -280,6 +104,12 @@ export class MemStorage implements IStorage {
         spendingLimit: '5000.00',
         currency: 'USDT',
         strowalletCardId: null,
+        billingAddress: null,
+        billingCity: null,
+        billingState: null,
+        billingZip: null,
+        billingCountry: null,
+        nameOnCard: null,
         approvedAt: new Date(),
         createdAt: new Date(),
       },
@@ -296,6 +126,12 @@ export class MemStorage implements IStorage {
         spendingLimit: '1500.00',
         currency: 'USDT',
         strowalletCardId: null,
+        billingAddress: null,
+        billingCity: null,
+        billingState: null,
+        billingZip: null,
+        billingCountry: null,
+        nameOnCard: null,
         approvedAt: new Date(),
         createdAt: new Date(),
       },
@@ -312,6 +148,12 @@ export class MemStorage implements IStorage {
         spendingLimit: '25000.00',
         currency: 'USDT',
         strowalletCardId: null,
+        billingAddress: null,
+        billingCity: null,
+        billingState: null,
+        billingZip: null,
+        billingCountry: null,
+        nameOnCard: null,
         approvedAt: new Date(),
         createdAt: new Date(),
       },
@@ -388,8 +230,10 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id, 
+      phone: insertUser.phone || null,
       role: insertUser.role || 'user',
       kycStatus: insertUser.kycStatus || 'pending',
+      kycDocuments: insertUser.kycDocuments || null,
       createdAt: new Date() 
     };
     this.users.set(id, user);
@@ -416,16 +260,27 @@ export class MemStorage implements IStorage {
   async createCard(insertCard: InsertCard): Promise<Card> {
     const id = randomUUID();
     const maskedNumber = `**** **** **** ${insertCard.cardNumber.slice(-4)}`;
-    const card: Card = { 
-      ...insertCard, 
-      id, 
+    const finalCard: Card = { 
+      ...insertCard,
+      id,
+      cardNumber: insertCard.cardNumber,
+      cvv: insertCard.cvv,
+      expiryDate: insertCard.expiryDate || null,
       maskedNumber,
       balance: '0.00',
-      createdAt: new Date() 
+      currency: insertCard.currency || 'USDT',
+      status: insertCard.status || 'pending',
+      cardType: insertCard.cardType || 'virtual',
+      strowalletCardId: null,
+      billingAddress: insertCard.billingAddress || null,
+      billingCity: insertCard.billingCity || null,
+      billingState: insertCard.billingState || null,
+      billingZip: insertCard.billingZip || null,
+      billingCountry: insertCard.billingCountry || null,
+      nameOnCard: insertCard.nameOnCard || null,
+      approvedAt: insertCard.approvedAt || null,
+      createdAt: new Date()
     };
-    // Remove cardNumber and cvv from stored data for security
-    const { cardNumber, cvv, ...cardData } = insertCard;
-    const finalCard: Card = { ...cardData, id, maskedNumber, balance: '0.00', createdAt: new Date() };
     this.cards.set(id, finalCard);
     return finalCard;
   }
@@ -463,7 +318,15 @@ export class MemStorage implements IStorage {
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = randomUUID();
-    const transaction: Transaction = { ...insertTransaction, id, createdAt: new Date() };
+    const transaction: Transaction = { 
+      ...insertTransaction, 
+      id,
+      currency: insertTransaction.currency || 'USDT',
+      status: insertTransaction.status || 'completed',
+      description: insertTransaction.description || null,
+      strowalletTransactionId: null,
+      createdAt: new Date() 
+    };
     this.transactions.set(id, transaction);
     return transaction;
   }
@@ -475,7 +338,12 @@ export class MemStorage implements IStorage {
 
   async createApiKey(insertApiKey: InsertApiKey): Promise<ApiKey> {
     const id = randomUUID();
-    const apiKey: ApiKey = { ...insertApiKey, id, createdAt: new Date() };
+    const apiKey: ApiKey = { 
+      ...insertApiKey, 
+      id,
+      isTestMode: insertApiKey.isTestMode ?? true,
+      createdAt: new Date() 
+    };
     this.apiKeys.set(id, apiKey);
     return apiKey;
   }
@@ -508,7 +376,11 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const deposit: Deposit = { 
       ...insertDeposit, 
-      id, 
+      id,
+      currency: insertDeposit.currency || 'ETB',
+      status: insertDeposit.status || 'pending',
+      transactionReference: insertDeposit.transactionReference || null,
+      adminNotes: insertDeposit.adminNotes || null,
       createdAt: new Date(),
       processedBy: null,
       processedAt: null 
@@ -541,7 +413,9 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const document: KycDocument = { 
       ...insertDocument, 
-      id, 
+      id,
+      status: insertDocument.status || 'pending',
+      reviewNotes: insertDocument.reviewNotes || null,
       createdAt: new Date(),
       reviewedBy: null,
       reviewedAt: null 

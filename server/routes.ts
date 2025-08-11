@@ -1,7 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage-mongodb";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { MemStorage } from "./storage";
 import { StrowalletService } from "./strowallet";
 import { 
   insertCardSchema, 
@@ -14,6 +13,7 @@ import { z } from "zod";
 import bcrypt from "bcrypt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  const storage = new MemStorage();
   const DEFAULT_USER_ID = 'user-1'; // For demo purposes
 
   // Get all cards for the current user
@@ -530,30 +530,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Object Storage Routes
+  // Object Storage Routes - Disabled for Replit environment
   app.post("/api/objects/upload", async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ message: "Failed to get upload URL" });
-    }
+    res.status(501).json({ message: "Object storage not available in this environment. Use file upload instead." });
   });
 
   app.get("/objects/:objectPath(*)", async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      objectStorageService.downloadObject(objectFile, res);
-    } catch (error) {
-      console.error("Error downloading object:", error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.sendStatus(404);
-      }
-      return res.sendStatus(500);
-    }
+    res.status(501).json({ message: "Object storage not available in this environment." });
   });
 
   // Dashboard stats
@@ -579,17 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Object Storage Routes
-  app.post("/api/objects/upload", async (req, res) => {
-    try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
-    } catch (error) {
-      console.error("Error getting upload URL:", error);
-      res.status(500).json({ message: "Failed to get upload URL" });
-    }
-  });
+
 
   // KYC Document Routes
   app.get("/api/kyc-documents", async (req, res) => {
@@ -862,7 +835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "pending",
         balance: "0.00",
         spendingLimit: spendingLimit?.toString() || "1000.00",
-        strowalletCardId: strowalletCard.card_id,
+        // strowalletCardId: strowalletCard.card_id, // Not supported in schema
         billingAddress: billingAddress || null,
         billingCity: billingCity || null,
         billingState: billingState || null,
@@ -914,20 +887,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "File size too large. Maximum 10MB allowed." });
       }
 
-      // Create KYC document with file data
+      // Create KYC document with file data (simplified for MemStorage)
       const kycDocument = await storage.createKycDocument({
         userId,
         documentType,
-        fileName,
-        fileData,
-        contentType,
-        fileSize
+        documentUrl: `data:${contentType};base64,${fileData}` // Store as data URL
       });
 
       res.status(201).json({ 
         message: "File uploaded successfully",
-        documentId: kycDocument._id,
-        fileName: kycDocument.fileName 
+        documentId: kycDocument.id,
+        documentUrl: kycDocument.documentUrl
       });
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -938,18 +908,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get uploaded file from database
   app.get("/api/files/:documentId", async (req, res) => {
     try {
-      const document = await storage.getKYCDocumentById(req.params.documentId);
+      // For MemStorage, we'll get all documents and find by ID
+      const allDocs = await storage.getAllKycDocuments();
+      const document = allDocs.find(doc => doc.id === req.params.documentId);
       
       if (!document) {
         return res.status(404).json({ message: "File not found" });
       }
 
-      // Return file data as base64
+      // Return document data
       res.json({
-        fileName: document.fileName,
-        contentType: document.contentType,
-        fileSize: document.fileSize,
-        fileData: document.fileData,
+        id: document.id,
+        documentType: document.documentType,
+        documentUrl: document.documentUrl,
         status: document.status
       });
     } catch (error) {

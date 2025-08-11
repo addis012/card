@@ -6,6 +6,13 @@ CardFlow Pro is a comprehensive card issuing and management platform that provid
 
 ## Recent Changes (August 2025)
 
+### MongoDB Migration Complete ✅
+- **Database Migration**: Successfully migrated from PostgreSQL to MongoDB Atlas
+- **Mongoose Integration**: Complete ODM setup with schema definitions and validation
+- **Storage Layer Refactoring**: Updated storage interface to work seamlessly with MongoDB
+- **Connection Management**: Robust MongoDB connection handling with error recovery
+- **Data Compatibility**: All existing features and data structures preserved during migration
+
 ### Strowallet API Integration Complete ✅
 - **Full API Integration**: Complete Strowallet API integration with provided credentials
 - **Development Mock System**: Automatic fallback to mock responses in development mode
@@ -73,12 +80,12 @@ Preferred communication style: Simple, everyday language.
 - **Structured route handling** with comprehensive error management
 - **Request/response logging** middleware for debugging and monitoring
 
-### Database Design
-- **PostgreSQL** configured as the primary database (via Drizzle configuration)
-- **Drizzle ORM** with schema-first approach for type-safe database operations
-- **Neon Database** integration for serverless PostgreSQL hosting
-- **Four main entities**: Users, Cards, Transactions, and API Keys
-- **Relational structure** with proper foreign key constraints and data integrity
+### Database Design  
+- **MongoDB** configured as the primary database (migrated from PostgreSQL)
+- **Mongoose ODM** with document-based schema approach for flexible data operations
+- **MongoDB Atlas** integration for cloud-hosted MongoDB database
+- **Seven main collections**: Users, Cards, Transactions, API Keys, Deposits, KYC Documents, and related data
+- **Document-based structure** with embedded relationships and flexible schema design
 
 ### Component Architecture
 - **Modular component structure** with clear separation between UI components, pages, and business logic

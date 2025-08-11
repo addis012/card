@@ -6,6 +6,20 @@ import {
   type Deposit, type InsertDeposit,
   type KycDocument, type InsertKycDocument
 } from "@shared/schema";
+import { 
+  User as UserModel, 
+  Card as CardModel, 
+  Transaction as TransactionModel, 
+  APIKey as APIKeyModel, 
+  Deposit as DepositModel, 
+  KYCDocument as KYCDocumentModel,
+  type IUser,
+  type ICard,
+  type ITransaction,
+  type IAPIKey,
+  type IDeposit,
+  type IKYCDocument
+} from "@shared/mongodb-schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -47,390 +61,409 @@ export interface IStorage {
   updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined>;
 }
 
-// DatabaseStorage class removed - using MemStorage for Replit environment
-
-export class MemStorage implements IStorage {
-  private users: Map<string, User> = new Map();
-  private cards: Map<string, Card> = new Map();
-  private transactions: Map<string, Transaction> = new Map();
-  private apiKeys: Map<string, ApiKey> = new Map();
-  private deposits: Map<string, Deposit> = new Map();
-  private kycDocuments: Map<string, KycDocument> = new Map();
-
-  constructor() {
-    this.seedData();
+// MongoDB Storage implementation
+export class MongoStorage implements IStorage {
+  
+  // Helper function to convert MongoDB document to our interface types
+  private documentToUser(doc: IUser): User {
+    return {
+      id: doc._id.toString(),
+      username: doc.username,
+      password: doc.password,
+      email: doc.email,
+      firstName: doc.firstName,
+      lastName: doc.lastName,
+      phone: doc.phone || null,
+      role: doc.role,
+      kycStatus: doc.kycStatus,
+      kycDocuments: doc.kycDocuments || null,
+      createdAt: doc.createdAt
+    };
   }
 
-  private seedData() {
-    // Create default user
-    const defaultUser: User = {
-      id: 'user-1',
-      username: 'demo@cardflow.com',
-      password: 'demo123',
-      email: 'demo@cardflow.com',
-      firstName: 'John',
-      lastName: 'Doe',
-      phone: '+251901234567',
-      role: 'user',
-      kycStatus: 'pending',
-      kycDocuments: null,
-      createdAt: new Date(),
+  private documentToCard(doc: ICard): Card {
+    return {
+      id: doc._id.toString(),
+      userId: doc.userId,
+      cardNumber: doc.cardNumber || null,
+      maskedNumber: doc.maskedNumber || null,
+      expiryDate: doc.expiryDate || null,
+      cvv: doc.cvv || null,
+      cardType: doc.cardType,
+      status: doc.status,
+      balance: doc.balance.toString(),
+      spendingLimit: doc.spendingLimit.toString(),
+      currency: doc.currency,
+      strowalletCardId: doc.strowalletCardId || null,
+      billingAddress: doc.billingAddress || null,
+      billingCity: doc.billingCity || null,
+      billingState: doc.billingState || null,
+      billingZip: doc.billingZip || null,
+      billingCountry: doc.billingCountry || null,
+      nameOnCard: doc.nameOnCard || null,
+      approvedAt: doc.approvedAt || null,
+      createdAt: doc.createdAt
     };
-    this.users.set(defaultUser.id, defaultUser);
+  }
 
-    // Create API keys
-    const apiKey: ApiKey = {
-      id: 'api-1',
-      userId: defaultUser.id,
-      publicKey: 'pub_hoAnJXAVOxfE6VibvCya7EiXEnw3YyjLhhLAk4cF',
-      secretKey: 'sec_neCKIYtRYqCwOvHJcBwwBAz4PASKF4gHvvtvdNde',
-      isTestMode: true,
-      createdAt: new Date(),
+  private documentToTransaction(doc: ITransaction): Transaction {
+    return {
+      id: doc._id.toString(),
+      cardId: doc.cardId,
+      merchant: doc.merchant,
+      amount: doc.amount.toString(),
+      currency: doc.currency,
+      status: doc.status,
+      type: doc.type,
+      description: doc.description || null,
+      transactionReference: doc.transactionReference || null,
+      createdAt: doc.createdAt
     };
-    this.apiKeys.set(apiKey.id, apiKey);
+  }
 
-    // Create sample cards
-    const cards: Card[] = [
-      {
-        id: 'card-1',
-        userId: defaultUser.id,
-        cardNumber: '4532123456781234',
-        maskedNumber: '**** **** **** 4532',
-        expiryDate: '12/25',
-        cvv: '123',
-        cardType: 'virtual',
-        status: 'active',
-        balance: '2450.00',
-        spendingLimit: '5000.00',
-        currency: 'USDT',
-        strowalletCardId: null,
-        billingAddress: null,
-        billingCity: null,
-        billingState: null,
-        billingZip: null,
-        billingCountry: null,
-        nameOnCard: null,
-        approvedAt: new Date(),
-        createdAt: new Date(),
-      },
-      {
-        id: 'card-2',
-        userId: defaultUser.id,
-        cardNumber: '4532987654327891',
-        maskedNumber: '**** **** **** 7891',
-        expiryDate: '08/26',
-        cvv: '456',
-        cardType: 'physical',
-        status: 'frozen',
-        balance: '875.50',
-        spendingLimit: '1500.00',
-        currency: 'USDT',
-        strowalletCardId: null,
-        billingAddress: null,
-        billingCity: null,
-        billingState: null,
-        billingZip: null,
-        billingCountry: null,
-        nameOnCard: null,
-        approvedAt: new Date(),
-        createdAt: new Date(),
-      },
-      {
-        id: 'card-3',
-        userId: defaultUser.id,
-        cardNumber: '4532111122222468',
-        maskedNumber: '**** **** **** 2468',
-        expiryDate: '03/27',
-        cvv: '789',
-        cardType: 'physical',
-        status: 'active',
-        balance: '15230.75',
-        spendingLimit: '25000.00',
-        currency: 'USDT',
-        strowalletCardId: null,
-        billingAddress: null,
-        billingCity: null,
-        billingState: null,
-        billingZip: null,
-        billingCountry: null,
-        nameOnCard: null,
-        approvedAt: new Date(),
-        createdAt: new Date(),
-      },
-    ];
+  private documentToApiKey(doc: IAPIKey): ApiKey {
+    return {
+      id: doc._id.toString(),
+      userId: doc.userId,
+      name: doc.name,
+      key: doc.key,
+      permissions: doc.permissions,
+      lastUsed: doc.lastUsed || null,
+      isActive: doc.isActive,
+      createdAt: doc.createdAt
+    };
+  }
 
-    cards.forEach(card => this.cards.set(card.id, card));
+  private documentToDeposit(doc: IDeposit): Deposit {
+    return {
+      id: doc._id.toString(),
+      userId: doc.userId,
+      amount: doc.amount.toString(),
+      currency: doc.currency,
+      status: doc.status,
+      paymentMethod: doc.paymentMethod,
+      transactionReference: doc.transactionReference || null,
+      adminNotes: doc.adminNotes || null,
+      processedBy: doc.processedBy || null,
+      processedAt: doc.processedAt || null,
+      createdAt: doc.createdAt
+    };
+  }
 
-    // Create sample transactions
-    const transactions: Transaction[] = [
-      {
-        id: 'txn-1',
-        cardId: 'card-1',
-        merchant: 'Amazon Web Services',
-        amount: '-89.50',
-        currency: 'USDT',
-        strowalletTransactionId: null,
-        status: 'completed',
-        type: 'debit',
-        description: 'Monthly AWS hosting',
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      },
-      {
-        id: 'txn-2',
-        cardId: 'card-2',
-        merchant: 'Office Supplies Inc',
-        amount: '-156.78',
-        currency: 'USDT',
-        strowalletTransactionId: null,
-        status: 'completed',
-        type: 'debit',
-        description: 'Office supplies purchase',
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-      },
-      {
-        id: 'txn-3',
-        cardId: 'card-3',
-        merchant: 'Business Travel',
-        amount: '-445.20',
-        currency: 'USDT',
-        strowalletTransactionId: null,
-        status: 'completed',
-        type: 'debit',
-        description: 'Flight booking',
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      },
-      {
-        id: 'txn-4',
-        cardId: 'card-1',
-        merchant: 'Software License',
-        amount: '-299.00',
-        currency: 'USDT',
-        strowalletTransactionId: null,
-        status: 'completed',
-        type: 'debit',
-        description: 'Annual software license',
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-      },
-    ];
-
-    transactions.forEach(txn => this.transactions.set(txn.id, txn));
+  private documentToKycDocument(doc: IKYCDocument): KycDocument {
+    return {
+      id: doc._id.toString(),
+      userId: doc.userId,
+      documentType: doc.documentType,
+      documentUrl: doc.documentUrl || null,
+      fileName: doc.fileName,
+      fileData: doc.fileData,
+      contentType: doc.contentType,
+      fileSize: doc.fileSize,
+      status: doc.status,
+      reviewedBy: doc.reviewedBy || null,
+      reviewNotes: doc.reviewNotes || null,
+      reviewedAt: doc.reviewedAt || null,
+      createdAt: doc.createdAt
+    };
   }
 
   // User methods
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    try {
+      const user = await UserModel.findById(id);
+      return user ? this.documentToUser(user) : undefined;
+    } catch (error) {
+      console.error('Error getting user:', error);
+      return undefined;
+    }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    try {
+      const user = await UserModel.findOne({ username });
+      return user ? this.documentToUser(user) : undefined;
+    } catch (error) {
+      console.error('Error getting user by username:', error);
+      return undefined;
+    }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { 
-      ...insertUser, 
-      id, 
-      phone: insertUser.phone || null,
-      role: insertUser.role || 'user',
-      kycStatus: insertUser.kycStatus || 'pending',
-      kycDocuments: insertUser.kycDocuments || null,
-      createdAt: new Date() 
-    };
-    this.users.set(id, user);
-    return user;
+    try {
+      const user = new UserModel(insertUser);
+      const savedUser = await user.save();
+      return this.documentToUser(savedUser);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-    const updatedUser = { ...user, ...updates };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    try {
+      const user = await UserModel.findByIdAndUpdate(id, updates, { new: true });
+      return user ? this.documentToUser(user) : undefined;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      return undefined;
+    }
   }
 
   // Card methods
   async getCard(id: string): Promise<Card | undefined> {
-    return this.cards.get(id);
+    try {
+      const card = await CardModel.findById(id);
+      return card ? this.documentToCard(card) : undefined;
+    } catch (error) {
+      console.error('Error getting card:', error);
+      return undefined;
+    }
   }
 
   async getCardsByUserId(userId: string): Promise<Card[]> {
-    return Array.from(this.cards.values()).filter(card => card.userId === userId);
+    try {
+      const cards = await CardModel.find({ userId });
+      return cards.map(card => this.documentToCard(card));
+    } catch (error) {
+      console.error('Error getting cards by user ID:', error);
+      return [];
+    }
   }
 
   async createCard(insertCard: InsertCard): Promise<Card> {
-    const id = randomUUID();
-    const maskedNumber = `**** **** **** ${insertCard.cardNumber.slice(-4)}`;
-    const finalCard: Card = { 
-      ...insertCard,
-      id,
-      cardNumber: insertCard.cardNumber,
-      cvv: insertCard.cvv,
-      expiryDate: insertCard.expiryDate || null,
-      maskedNumber,
-      balance: '0.00',
-      currency: insertCard.currency || 'USDT',
-      status: insertCard.status || 'pending',
-      cardType: insertCard.cardType || 'virtual',
-      strowalletCardId: null,
-      billingAddress: insertCard.billingAddress || null,
-      billingCity: insertCard.billingCity || null,
-      billingState: insertCard.billingState || null,
-      billingZip: insertCard.billingZip || null,
-      billingCountry: insertCard.billingCountry || null,
-      nameOnCard: insertCard.nameOnCard || null,
-      approvedAt: insertCard.approvedAt || null,
-      createdAt: new Date()
-    };
-    this.cards.set(id, finalCard);
-    return finalCard;
+    try {
+      const cardData = {
+        ...insertCard,
+        balance: parseFloat(insertCard.spendingLimit || "1000.00") // Convert to number for MongoDB
+      };
+      const card = new CardModel(cardData);
+      const savedCard = await card.save();
+      return this.documentToCard(savedCard);
+    } catch (error) {
+      console.error('Error creating card:', error);
+      throw error;
+    }
   }
 
   async updateCard(id: string, updates: Partial<Card>): Promise<Card | undefined> {
-    const card = this.cards.get(id);
-    if (!card) return undefined;
-    const updatedCard = { ...card, ...updates };
-    this.cards.set(id, updatedCard);
-    return updatedCard;
+    try {
+      const updateData: any = { ...updates };
+      if (updates.balance !== undefined) {
+        updateData.balance = parseFloat(updates.balance);
+      }
+      if (updates.spendingLimit !== undefined) {
+        updateData.spendingLimit = parseFloat(updates.spendingLimit);
+      }
+      
+      const card = await CardModel.findByIdAndUpdate(id, updateData, { new: true });
+      return card ? this.documentToCard(card) : undefined;
+    } catch (error) {
+      console.error('Error updating card:', error);
+      return undefined;
+    }
   }
 
   async deleteCard(id: string): Promise<boolean> {
-    return this.cards.delete(id);
+    try {
+      const result = await CardModel.findByIdAndDelete(id);
+      return !!result;
+    } catch (error) {
+      console.error('Error deleting card:', error);
+      return false;
+    }
   }
 
   // Transaction methods
   async getTransaction(id: string): Promise<Transaction | undefined> {
-    return this.transactions.get(id);
+    try {
+      const transaction = await TransactionModel.findById(id);
+      return transaction ? this.documentToTransaction(transaction) : undefined;
+    } catch (error) {
+      console.error('Error getting transaction:', error);
+      return undefined;
+    }
   }
 
   async getTransactionsByCardId(cardId: string): Promise<Transaction[]> {
-    return Array.from(this.transactions.values())
-      .filter(txn => txn.cardId === cardId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    try {
+      const transactions = await TransactionModel.find({ cardId }).sort({ createdAt: -1 });
+      return transactions.map(tx => this.documentToTransaction(tx));
+    } catch (error) {
+      console.error('Error getting transactions by card ID:', error);
+      return [];
+    }
   }
 
   async getTransactionsByUserId(userId: string): Promise<Transaction[]> {
-    const userCards = await this.getCardsByUserId(userId);
-    const cardIds = userCards.map(card => card.id);
-    return Array.from(this.transactions.values())
-      .filter(txn => cardIds.includes(txn.cardId))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    try {
+      // First get all cards for this user
+      const cards = await CardModel.find({ userId });
+      const cardIds = cards.map(card => card._id.toString());
+      
+      // Then get all transactions for those cards
+      const transactions = await TransactionModel.find({ cardId: { $in: cardIds } }).sort({ createdAt: -1 });
+      return transactions.map(tx => this.documentToTransaction(tx));
+    } catch (error) {
+      console.error('Error getting transactions by user ID:', error);
+      return [];
+    }
   }
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const id = randomUUID();
-    const transaction: Transaction = { 
-      ...insertTransaction, 
-      id,
-      currency: insertTransaction.currency || 'USDT',
-      status: insertTransaction.status || 'completed',
-      description: insertTransaction.description || null,
-      strowalletTransactionId: null,
-      createdAt: new Date() 
-    };
-    this.transactions.set(id, transaction);
-    return transaction;
+    try {
+      const transactionData = {
+        ...insertTransaction,
+        amount: parseFloat(insertTransaction.amount) // Convert to number for MongoDB
+      };
+      const transaction = new TransactionModel(transactionData);
+      const savedTransaction = await transaction.save();
+      return this.documentToTransaction(savedTransaction);
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+      throw error;
+    }
   }
 
   // API Key methods
   async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
-    return Array.from(this.apiKeys.values()).filter(key => key.userId === userId);
+    try {
+      const apiKeys = await APIKeyModel.find({ userId });
+      return apiKeys.map(key => this.documentToApiKey(key));
+    } catch (error) {
+      console.error('Error getting API keys by user ID:', error);
+      return [];
+    }
   }
 
   async createApiKey(insertApiKey: InsertApiKey): Promise<ApiKey> {
-    const id = randomUUID();
-    const apiKey: ApiKey = { 
-      ...insertApiKey, 
-      id,
-      isTestMode: insertApiKey.isTestMode ?? true,
-      createdAt: new Date() 
-    };
-    this.apiKeys.set(id, apiKey);
-    return apiKey;
+    try {
+      const apiKeyData = {
+        ...insertApiKey,
+        key: randomUUID() // Generate unique API key
+      };
+      const apiKey = new APIKeyModel(apiKeyData);
+      const savedApiKey = await apiKey.save();
+      return this.documentToApiKey(savedApiKey);
+    } catch (error) {
+      console.error('Error creating API key:', error);
+      throw error;
+    }
   }
 
   async updateApiKey(id: string, updates: Partial<ApiKey>): Promise<ApiKey | undefined> {
-    const apiKey = this.apiKeys.get(id);
-    if (!apiKey) return undefined;
-    const updatedApiKey = { ...apiKey, ...updates };
-    this.apiKeys.set(id, updatedApiKey);
-    return updatedApiKey;
+    try {
+      const apiKey = await APIKeyModel.findByIdAndUpdate(id, updates, { new: true });
+      return apiKey ? this.documentToApiKey(apiKey) : undefined;
+    } catch (error) {
+      console.error('Error updating API key:', error);
+      return undefined;
+    }
   }
 
   // Deposit methods
   async getDeposit(id: string): Promise<Deposit | undefined> {
-    return this.deposits.get(id);
+    try {
+      const deposit = await DepositModel.findById(id);
+      return deposit ? this.documentToDeposit(deposit) : undefined;
+    } catch (error) {
+      console.error('Error getting deposit:', error);
+      return undefined;
+    }
   }
 
   async getDepositsByUserId(userId: string): Promise<Deposit[]> {
-    return Array.from(this.deposits.values())
-      .filter(deposit => deposit.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    try {
+      const deposits = await DepositModel.find({ userId }).sort({ createdAt: -1 });
+      return deposits.map(deposit => this.documentToDeposit(deposit));
+    } catch (error) {
+      console.error('Error getting deposits by user ID:', error);
+      return [];
+    }
   }
 
   async getAllDeposits(): Promise<Deposit[]> {
-    return Array.from(this.deposits.values())
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    try {
+      const deposits = await DepositModel.find().sort({ createdAt: -1 });
+      return deposits.map(deposit => this.documentToDeposit(deposit));
+    } catch (error) {
+      console.error('Error getting all deposits:', error);
+      return [];
+    }
   }
 
   async createDeposit(insertDeposit: InsertDeposit): Promise<Deposit> {
-    const id = randomUUID();
-    const deposit: Deposit = { 
-      ...insertDeposit, 
-      id,
-      currency: insertDeposit.currency || 'ETB',
-      status: insertDeposit.status || 'pending',
-      transactionReference: insertDeposit.transactionReference || null,
-      adminNotes: insertDeposit.adminNotes || null,
-      createdAt: new Date(),
-      processedBy: null,
-      processedAt: null 
-    };
-    this.deposits.set(id, deposit);
-    return deposit;
+    try {
+      const depositData = {
+        ...insertDeposit,
+        amount: parseFloat(insertDeposit.amount) // Convert to number for MongoDB
+      };
+      const deposit = new DepositModel(depositData);
+      const savedDeposit = await deposit.save();
+      return this.documentToDeposit(savedDeposit);
+    } catch (error) {
+      console.error('Error creating deposit:', error);
+      throw error;
+    }
   }
 
   async updateDeposit(id: string, updates: Partial<Deposit>): Promise<Deposit | undefined> {
-    const deposit = this.deposits.get(id);
-    if (!deposit) return undefined;
-    const updatedDeposit = { ...deposit, ...updates };
-    this.deposits.set(id, updatedDeposit);
-    return updatedDeposit;
+    try {
+      const updateData: any = { ...updates };
+      if (updates.amount !== undefined) {
+        updateData.amount = parseFloat(updates.amount);
+      }
+      
+      const deposit = await DepositModel.findByIdAndUpdate(id, updateData, { new: true });
+      return deposit ? this.documentToDeposit(deposit) : undefined;
+    } catch (error) {
+      console.error('Error updating deposit:', error);
+      return undefined;
+    }
   }
 
   // KYC methods
   async getKycDocumentsByUserId(userId: string): Promise<KycDocument[]> {
-    return Array.from(this.kycDocuments.values())
-      .filter(doc => doc.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    try {
+      const documents = await KYCDocumentModel.find({ userId }).sort({ createdAt: -1 });
+      return documents.map(doc => this.documentToKycDocument(doc));
+    } catch (error) {
+      console.error('Error getting KYC documents by user ID:', error);
+      return [];
+    }
   }
 
   async getAllKycDocuments(): Promise<KycDocument[]> {
-    return Array.from(this.kycDocuments.values())
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    try {
+      const documents = await KYCDocumentModel.find().sort({ createdAt: -1 });
+      return documents.map(doc => this.documentToKycDocument(doc));
+    } catch (error) {
+      console.error('Error getting all KYC documents:', error);
+      return [];
+    }
   }
 
-  async createKycDocument(insertDocument: InsertKycDocument): Promise<KycDocument> {
-    const id = randomUUID();
-    const document: KycDocument = { 
-      ...insertDocument, 
-      id,
-      status: insertDocument.status || 'pending',
-      reviewNotes: insertDocument.reviewNotes || null,
-      createdAt: new Date(),
-      reviewedBy: null,
-      reviewedAt: null 
-    };
-    this.kycDocuments.set(id, document);
-    return document;
+  async createKycDocument(insertKycDocument: InsertKycDocument): Promise<KycDocument> {
+    try {
+      const document = new KYCDocumentModel(insertKycDocument);
+      const savedDocument = await document.save();
+      return this.documentToKycDocument(savedDocument);
+    } catch (error) {
+      console.error('Error creating KYC document:', error);
+      throw error;
+    }
   }
 
   async updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined> {
-    const document = this.kycDocuments.get(id);
-    if (!document) return undefined;
-    const updatedDocument = { ...document, ...updates };
-    this.kycDocuments.set(id, updatedDocument);
-    return updatedDocument;
+    try {
+      const document = await KYCDocumentModel.findByIdAndUpdate(id, updates, { new: true });
+      return document ? this.documentToKycDocument(document) : undefined;
+    } catch (error) {
+      console.error('Error updating KYC document:', error);
+      return undefined;
+    }
   }
 }
 
-export const storage = new MemStorage();
+// Export a singleton instance
+export const storage = new MongoStorage();

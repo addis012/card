@@ -314,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Update local card balance
-      const updatedBalance = (parseFloat(card.balance) + parseFloat(amount)).toFixed(2);
+      const updatedBalance = (parseFloat(card.balance.toString()) + parseFloat(amount.toString())).toFixed(2);
       await storage.updateCard(cardId, { balance: updatedBalance });
 
       res.json({
@@ -545,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transactions = await storage.getTransactionsByUserId(DEFAULT_USER_ID);
       
       const activeCards = cards.filter(card => card.status === 'active').length;
-      const totalVolume = transactions.reduce((sum, txn) => sum + Math.abs(parseFloat(txn.amount)), 0);
+      const totalVolume = transactions.reduce((sum, txn) => sum + Math.abs(parseFloat(txn.amount.toString())), 0);
       const totalTransactions = transactions.length;
       
       const stats = {

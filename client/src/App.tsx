@@ -13,6 +13,7 @@ import Login from "@/pages/login";
 import AdminPanel from "@/pages/admin";
 import Deposits from "@/pages/deposits";
 import CardAddress from "@/pages/card-address";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import MobileHeader from "@/components/layout/mobile-header";
@@ -23,12 +24,12 @@ function AuthenticatedRoutes() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-b from-slate-800 via-blue-900 to-slate-900">
       <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       <div className="lg:ml-80 min-h-screen">
-        <main className="p-4 lg:p-8">
+        <main className="p-0">
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/dashboard" component={Dashboard} />
@@ -38,6 +39,7 @@ function AuthenticatedRoutes() {
             <Route path="/api" component={ApiSettings} />
             <Route path="/admin" component={AdminPanel} />
             <Route path="/cards/:id/address" component={CardAddress} />
+            <Route path="/profile" component={Profile} />
             <Route component={NotFound} />
           </Switch>
         </main>

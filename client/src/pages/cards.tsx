@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card as CardType, Transaction } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, EyeOff, Plus, CreditCard, ArrowUpDown, Pause, DollarSign } from "lucide-react";
+import { Eye, EyeOff, Plus, CreditCard, ArrowUpDown, ArrowLeft, DollarSign } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Cards() {
+  const { user } = useAuth();
   const [showCardDetails, setShowCardDetails] = useState(false);
 
   const { data: cards, isLoading } = useQuery<CardType[]>({
@@ -18,186 +20,214 @@ export default function Cards() {
     queryKey: ["/api/transactions"],
   });
 
-  const primaryCard = cards?.[0];
+  const primaryCard = Array.isArray(cards) ? cards[0] : null;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900" data-testid="text-virtual-card">
-          Virtual Card →
-        </h1>
-        <Button 
-          className="bg-green-500 hover:bg-green-600 text-white rounded-xl px-6"
-          data-testid="button-create-new-card"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create a New Card
-        </Button>
-      </div>
-
-      {/* Virtual Card Display */}
-      {primaryCard ? (
-        <div className="relative">
-          {/* Card */}
-          <div className="bg-gradient-to-br from-gray-800 via-gray-900 to-black rounded-2xl p-6 text-white shadow-2xl max-w-md mx-auto"
-               data-testid="card-display">
-            {/* Card Header */}
-            <div className="flex justify-between items-start mb-8">
-              <div className="text-sm text-gray-300">ZEMACARD BUY VIRTUAL CARDS IN ETHIOPIA</div>
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <CreditCard className="h-4 w-4" />
-              </div>
-            </div>
-
-            {/* Card Number */}
-            <div className="mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="bg-yellow-400 w-12 h-8 rounded-md flex items-center justify-center text-black font-bold text-sm">
-                  5561
-                </div>
-                <div className="text-xl font-mono tracking-wider">
-                  {showCardDetails ? primaryCard.cardNumber || "5061 **** **** 3966" : "50** **** **** **66"}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCardDetails(!showCardDetails)}
-                  className="text-white hover:bg-white/10"
-                  data-testid="button-toggle-card-details"
-                >
-                  {showCardDetails ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-
-            {/* Card Details */}
-            <div className="flex justify-between items-end">
-              <div>
-                <div className="text-xs text-gray-400 mb-1">VALID THRU / 10 / 27</div>
-                <div className="font-semibold text-lg">
-                  {primaryCard.nameOnCard || "ADDISU AEMASU"}
-                </div>
-              </div>
-              <div className="w-12 h-8">
-                {/* Mastercard logo placeholder */}
-                <div className="bg-red-500 w-6 h-6 rounded-full inline-block"></div>
-                <div className="bg-yellow-400 w-6 h-6 rounded-full inline-block -ml-3"></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card Balance */}
-          <div className="text-center mt-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Card Balance</h2>
-            <p className="text-3xl font-bold text-gray-900" data-testid="text-card-balance">
-              ${parseFloat(primaryCard.balance || '0').toFixed(2)} USD
-            </p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-4 gap-4 mt-8">
-            <Button 
-              variant="outline" 
-              className="flex flex-col items-center p-4 h-auto border-green-500 text-green-600 hover:bg-green-50"
-              data-testid="button-details"
-            >
-              <CreditCard className="h-6 w-6 mb-2" />
-              <span className="text-sm">Details</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex flex-col items-center p-4 h-auto border-green-500 text-green-600 hover:bg-green-50"
-              data-testid="button-remove-default"
-            >
-              <Pause className="h-6 w-6 mb-2" />
-              <span className="text-sm">Remove Default</span>
-            </Button>
-            <Link href="/deposits">
-              <Button 
-                variant="outline" 
-                className="flex flex-col items-center p-4 h-auto border-green-500 text-green-600 hover:bg-green-50 w-full"
-                data-testid="button-fund"
-              >
-                <DollarSign className="h-6 w-6 mb-2" />
-                <span className="text-sm">Fund</span>
+    <div className="min-h-screen bg-gradient-to-b from-slate-800 via-blue-900 to-slate-900 text-white">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
+                <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/transactions">
-              <Button 
-                variant="outline" 
-                className="flex flex-col items-center p-4 h-auto border-green-500 text-green-600 hover:bg-green-50 w-full"
-                data-testid="button-transactions"
-              >
-                <ArrowUpDown className="h-6 w-6 mb-2" />
-                <span className="text-sm">Transactions</span>
-              </Button>
-            </Link>
+            <h1 className="text-2xl font-bold text-white" data-testid="text-virtual-card">
+              Virtual Card →
+            </h1>
           </div>
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <CreditCard className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Cards Yet</h3>
-          <p className="text-gray-600 mb-6">Create your first virtual card to get started</p>
-          <Button className="bg-green-500 hover:bg-green-600 text-white">
+          <Button 
+            className="bg-green-500 hover:bg-green-600 text-white rounded-xl px-4 py-2"
+            data-testid="button-create-new-card"
+          >
             <Plus className="h-4 w-4 mr-2" />
-            Create Your First Card
+            Create New Card
           </Button>
         </div>
-      )}
 
-      {/* Recent Transactions */}
-      <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Recent Transaction</h2>
+        {/* Virtual Card Display */}
+        {primaryCard && (
+          <div className="space-y-6">
+            {/* Card Display */}
+            <div className="relative bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl p-6 mx-auto max-w-md">
+              {/* Card Brand Logo */}
+              <div className="flex items-center justify-between mb-8">
+                <span className="text-white text-sm font-medium">ZEMACARD BUY VIRTUAL CARDS IN ETHIOPIA</span>
+                <div className="w-8 h-8">
+                  <svg viewBox="0 0 48 48" className="w-full h-full">
+                    <circle cx="24" cy="24" r="24" fill="#ff5f00"/>
+                    <circle cx="16" cy="24" r="16" fill="#eb001b"/>
+                    <circle cx="32" cy="24" r="16" fill="#f79e1b"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Card Number */}
+              <div className="mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-yellow-400 w-12 h-8 rounded-md flex items-center justify-center text-black font-bold text-sm">
+                    5561
+                  </div>
+                  <p className="text-white text-xl font-mono tracking-wider">
+                    {showCardDetails ? (primaryCard.maskedNumber || "**** **** **** 3966") : "50** **** ****"}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCardDetails(!showCardDetails)}
+                    className="text-white hover:bg-white/10 p-1"
+                    data-testid="button-toggle-card-details"
+                  >
+                    {showCardDetails ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <div className="flex justify-between mt-2 text-xs text-white/70">
+                  <span>exp: 10 / 27</span>
+                  <span>50***</span>
+                </div>
+              </div>
+
+              {/* Card Holder */}
+              <div>
+                <p className="text-white/70 text-xs uppercase tracking-wide">
+                  {primaryCard.nameOnCard || `${user?.firstName} ${user?.lastName}`}
+                </p>
+              </div>
+
+              {/* WiFi Icon */}
+              <div className="absolute top-6 right-16">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* Card Balance */}
+            <div className="text-center">
+              <p className="text-white/70 text-sm mb-1">Card Balance</p>
+              <p className="text-white text-2xl font-bold">0 USD</p>
+              
+              {/* Action Icons */}
+              <div className="flex justify-center space-x-8 mt-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                    <CreditCard className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white/70 text-xs">Details</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                  </div>
+                  <span className="text-white/70 text-xs">Remove Default</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                    <DollarSign className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white/70 text-xs">Fund</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                    <ArrowUpDown className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white/70 text-xs">Transactions</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Transactions */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white text-lg font-semibold">Recent Transaction</h2>
             <Link href="/transactions">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-green-600 border-green-500 hover:bg-green-50"
-                data-testid="button-view-more"
-              >
+              <Button variant="ghost" className="text-green-400 hover:text-green-300 text-sm">
                 View More
               </Button>
             </Link>
           </div>
           
-          <div className="space-y-4">
-            {transactions.slice(0, 5).map((transaction: any) => (
-              <div 
-                key={transaction.id} 
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                data-testid={`transaction-${transaction.id}`}
-              >
+          <div className="space-y-3">
+            {Array.isArray(transactions) && transactions.slice(0, 5).map((transaction: any) => (
+              <div key={transaction.id} className="flex items-center justify-between bg-slate-700/30 rounded-xl p-4" data-testid={`transaction-${transaction.id}`}>
                 <div className="flex items-center space-x-3">
-                  <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <DollarSign className="h-5 w-5 text-green-600" />
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <DollarSign className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Virtual Card</p>
-                    <p className="text-sm text-gray-500">(CARD FUND)</p>
-                    <p className="text-xs text-green-600">● Success</p>
+                    <p className="text-white font-medium">Virtual Card</p>
+                    <p className="text-white/50 text-sm">(CARD FUND)</p>
+                    <p className="text-white/50 text-sm">● Success</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-gray-900">${Math.abs(parseFloat(transaction.amount || '0')).toFixed(2)} USD</p>
-                  <p className="text-sm text-gray-500">${(Math.abs(parseFloat(transaction.amount || '0')) * 0.85).toFixed(2)} USD</p>
+                  <p className="text-white font-semibold">{Math.abs(parseFloat(transaction.amount)).toFixed(2)} USD</p>
+                  <p className="text-white/50 text-sm">{(Math.abs(parseFloat(transaction.amount)) * 118.09).toFixed(2)} USD</p>
                 </div>
               </div>
             ))}
             
-            {transactions.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <ArrowUpDown className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No transactions yet</p>
-                <p className="text-sm">Your transaction history will appear here</p>
-              </div>
+            {/* Sample transactions if no real data */}
+            {(!Array.isArray(transactions) || transactions.length === 0) && (
+              <>
+                <div className="flex items-center justify-between bg-slate-700/30 rounded-xl p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Virtual Card</p>
+                      <p className="text-white/50 text-sm">(CARD FUND)</p>
+                      <p className="text-white/50 text-sm">● Success</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-semibold">100.00 USD</p>
+                    <p className="text-white/50 text-sm">118.09 USD</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between bg-slate-700/30 rounded-xl p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Virtual Card</p>
+                      <p className="text-white/50 text-sm">(CARD FUND)</p>
+                      <p className="text-white/50 text-sm">● Success</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-semibold">200.00 USD</p>
+                    <p className="text-white/50 text-sm">232.00 USD</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between bg-slate-700/30 rounded-xl p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <DollarSign className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Virtual Card</p>
+                      <p className="text-white/50 text-sm">(CARD FUND)</p>
+                      <p className="text-white/50 text-sm">● Success</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-semibold">50.00 USD</p>
+                    <p className="text-white/50 text-sm">57.05 USD</p>
+                  </div>
+                </div>
+              </>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

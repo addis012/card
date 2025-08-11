@@ -27,6 +27,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/cards", icon: CreditCard, label: "My Card" },
     { path: "/deposits", icon: DollarSign, label: "Add Money" },
     { path: "/transactions", icon: ArrowUpDown, label: "Transactions" },
+    { path: "/profile", icon: UserCircle, label: "My Profile" },
     { path: "/api", icon: Settings, label: "KYC Verification" },
   ];
 
@@ -44,7 +45,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       
       {/* Sidebar */}
       <aside className={`
-        fixed left-0 top-0 h-full w-80 bg-gradient-to-b from-indigo-900 via-blue-900 to-purple-900 
+        fixed left-0 top-0 h-full w-80 bg-gradient-to-b from-slate-800 via-blue-900 to-slate-900 
         text-white z-50 transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:z-auto

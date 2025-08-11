@@ -1,169 +1,150 @@
+import { pgTable, text, timestamp, boolean, decimal, jsonb } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User types
-export interface User {
-  id: string;
-  username: string;
-  password: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-  role: 'user' | 'admin';
-  kycStatus: 'pending' | 'approved' | 'rejected';
-  kycDocuments: string | null;
-  createdAt: Date;
-}
+// User table
+export const usersTable = pgTable("users", {
+  id: text("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  email: text("email").notNull().unique(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  phone: text("phone"),
+  role: text("role", { enum: ['user', 'admin'] }).notNull().default('user'),
+  kycStatus: text("kyc_status", { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
+  kycDocuments: text("kyc_documents"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
-// Deposit types
-export interface Deposit {
-  id: string;
-  userId: string;
-  amount: string;
-  currency: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  paymentMethod: 'bank_transfer' | 'mobile_money';
-  transactionReference: string | null;
-  adminNotes: string | null;
-  processedBy: string | null;
-  processedAt: Date | null;
-  createdAt: Date;
-}
+// Cards table
+export const cardsTable = pgTable("cards", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  cardNumber: text("card_number"),
+  maskedNumber: text("masked_number"),
+  expiryDate: text("expiry_date"),
+  cvv: text("cvv"),
+  cardType: text("card_type", { enum: ['virtual', 'physical'] }).notNull().default('virtual'),
+  status: text("status", { enum: ['pending', 'active', 'frozen', 'cancelled'] }).notNull().default('pending'),
+  balance: text("balance").notNull().default('0.00'),
+  spendingLimit: text("spending_limit").notNull().default('1000.00'),
+  currency: text("currency").notNull().default('USDT'),
+  strowalletCardId: text("strowallet_card_id"),
+  billingAddress: text("billing_address"),
+  billingCity: text("billing_city"),
+  billingState: text("billing_state"),
+  billingZip: text("billing_zip"),
+  billingCountry: text("billing_country"),
+  nameOnCard: text("name_on_card"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
-// KYC Document types
-export interface KycDocument {
-  id: string;
-  userId: string;
-  documentType: 'passport' | 'id_card' | 'driving_license' | 'selfie';
-  documentUrl: string | null;
-  fileName: string;
-  fileData: string;
-  contentType: string;
-  fileSize: number;
-  status: 'pending' | 'approved' | 'rejected';
-  reviewedBy: string | null;
-  reviewNotes: string | null;
-  reviewedAt: Date | null;
-  createdAt: Date;
-}
+// Transactions table
+export const transactionsTable = pgTable("transactions", {
+  id: text("id").primaryKey(),
+  cardId: text("card_id").notNull(),
+  merchant: text("merchant").notNull(),
+  amount: text("amount").notNull(),
+  currency: text("currency").notNull().default('USDT'),
+  status: text("status", { enum: ['pending', 'completed', 'failed', 'cancelled'] }).notNull().default('pending'),
+  type: text("type", { enum: ['purchase', 'withdrawal', 'refund', 'fee', 'deposit'] }).notNull().default('purchase'),
+  description: text("description"),
+  transactionReference: text("transaction_reference"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
-// Card types
-export interface Card {
-  id: string;
-  userId: string;
-  cardNumber: string | null;
-  maskedNumber: string | null;
-  expiryDate: string | null;
-  cvv: string | null;
-  cardType: 'virtual' | 'physical';
-  status: 'pending' | 'active' | 'frozen' | 'cancelled';
-  balance: string;
-  spendingLimit: string;
-  currency: string;
-  strowalletCardId: string | null;
-  billingAddress: string | null;
-  billingCity: string | null;
-  billingState: string | null;
-  billingZip: string | null;
-  billingCountry: string | null;
-  nameOnCard: string | null;
-  approvedAt: Date | null;
-  createdAt: Date;
-}
+// API Keys table
+export const apiKeysTable = pgTable("api_keys", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  key: text("key").notNull().unique(),
+  permissions: jsonb("permissions").notNull().default('[]'),
+  lastUsed: timestamp("last_used"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
-// Transaction types
-export interface Transaction {
-  id: string;
-  cardId: string;
-  merchant: string;
-  amount: string;
-  currency: string;
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
-  type: 'purchase' | 'withdrawal' | 'refund' | 'fee' | 'deposit';
-  description: string | null;
-  transactionReference: string | null;
-  createdAt: Date;
-}
+// Deposits table
+export const depositsTable = pgTable("deposits", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  amount: text("amount").notNull(),
+  currency: text("currency").notNull().default('ETB'),
+  status: text("status", { enum: ['pending', 'processing', 'completed', 'failed'] }).notNull().default('pending'),
+  paymentMethod: text("payment_method", { enum: ['bank_transfer', 'mobile_money'] }).notNull(),
+  transactionReference: text("transaction_reference"),
+  adminNotes: text("admin_notes"),
+  processedBy: text("processed_by"),
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
-// API Key types
-export interface ApiKey {
-  id: string;
-  userId: string;
-  name: string;
-  key: string;
-  permissions: string[];
-  lastUsed: Date | null;
-  isActive: boolean;
-  createdAt: Date;
-}
+// KYC Documents table
+export const kycDocumentsTable = pgTable("kyc_documents", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  documentType: text("document_type", { enum: ['passport', 'id_card', 'driving_license', 'selfie'] }).notNull(),
+  documentUrl: text("document_url"),
+  fileName: text("file_name").notNull(),
+  fileData: text("file_data").notNull(),
+  contentType: text("content_type").notNull(),
+  fileSize: text("file_size").notNull(),
+  status: text("status", { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
+  reviewedBy: text("reviewed_by"),
+  reviewNotes: text("review_notes"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
 // Insert schemas for validation
-export const insertUserSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(8),
-  email: z.string().email(),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  phone: z.string().optional(),
-  role: z.enum(['user', 'admin']).default('user'),
+export const insertUserSchema = createInsertSchema(usersTable).omit({
+  id: true,
+  createdAt: true,
 });
 
-export const insertDepositSchema = z.object({
-  userId: z.string().min(1),
-  amount: z.string().min(1),
-  currency: z.string().default('ETB'),
-  paymentMethod: z.enum(['bank_transfer', 'mobile_money']),
-  transactionReference: z.string().optional(),
-  adminNotes: z.string().optional(),
+export const insertCardSchema = createInsertSchema(cardsTable).omit({
+  id: true,
+  createdAt: true,
+  approvedAt: true,
 });
 
-export const insertKycDocumentSchema = z.object({
-  userId: z.string().min(1),
-  documentType: z.enum(['passport', 'id_card', 'driving_license', 'selfie']),
-  documentUrl: z.string().optional(),
-  fileName: z.string().min(1),
-  fileData: z.string().min(1),
-  contentType: z.string().min(1),
-  fileSize: z.number().positive(),
+export const insertTransactionSchema = createInsertSchema(transactionsTable).omit({
+  id: true,
+  createdAt: true,
 });
 
-export const insertCardSchema = z.object({
-  userId: z.string().min(1),
-  cardType: z.enum(['virtual', 'physical']).default('virtual'),
-  spendingLimit: z.string().default('1000.00'),
-  currency: z.string().default('USDT'),
-  billingAddress: z.string().optional(),
-  billingCity: z.string().optional(),
-  billingState: z.string().optional(),
-  billingZip: z.string().optional(),
-  billingCountry: z.string().optional(),
-  nameOnCard: z.string().optional(),
-  cardNumber: z.string().optional(),
-  maskedNumber: z.string().optional(),
-  expiryDate: z.string().optional(),
-  cvv: z.string().optional(),
+export const insertApiKeySchema = createInsertSchema(apiKeysTable).omit({
+  id: true,
+  createdAt: true,
+  lastUsed: true,
+  key: true,
 });
 
-export const insertTransactionSchema = z.object({
-  cardId: z.string().min(1),
-  merchant: z.string().min(1),
-  amount: z.string().min(1),
-  currency: z.string().default('USDT'),
-  type: z.enum(['purchase', 'withdrawal', 'refund', 'fee', 'deposit']).default('purchase'),
-  description: z.string().optional(),
-  transactionReference: z.string().optional(),
+export const insertDepositSchema = createInsertSchema(depositsTable).omit({
+  id: true,
+  createdAt: true,
+  processedAt: true,
 });
 
-export const insertApiKeySchema = z.object({
-  userId: z.string().min(1),
-  name: z.string().min(1),
-  permissions: z.array(z.string()).default([]),
+export const insertKycDocumentSchema = createInsertSchema(kycDocumentsTable).omit({
+  id: true,
+  createdAt: true,
+  reviewedAt: true,
 });
 
-// Type exports for inserts
+// Type exports
+export type User = typeof usersTable.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type InsertDeposit = z.infer<typeof insertDepositSchema>;
-export type InsertKycDocument = z.infer<typeof insertKycDocumentSchema>;
+export type Card = typeof cardsTable.$inferSelect;
 export type InsertCard = z.infer<typeof insertCardSchema>;
+export type Transaction = typeof transactionsTable.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+export type ApiKey = typeof apiKeysTable.$inferSelect;
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type Deposit = typeof depositsTable.$inferSelect;
+export type InsertDeposit = z.infer<typeof insertDepositSchema>;
+export type KycDocument = typeof kycDocumentsTable.$inferSelect;
+export type InsertKycDocument = z.infer<typeof insertKycDocumentSchema>;

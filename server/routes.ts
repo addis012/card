@@ -494,7 +494,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cardNumber: strowalletCard.card_number,
         expiryDate: `${strowalletCard.expiry_month}/${strowalletCard.expiry_year}`,
         cvv: strowalletCard.cvv,
-        status: "active",
         strowalletCardId: strowalletCard.card_id,
         balance: req.body.amount || "100",
       };
@@ -942,6 +941,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const kycDocument = await storage.createKycDocument({
         userId,
         documentType,
+        fileName,
+        fileData,
+        contentType,
+        fileSize,
         documentUrl: `data:${contentType};base64,${fileData}` // Store as data URL
       });
 

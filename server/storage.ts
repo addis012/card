@@ -6,20 +6,6 @@ import {
   type Deposit, type InsertDeposit,
   type KycDocument, type InsertKycDocument
 } from "@shared/schema";
-import { 
-  User as UserModel, 
-  Card as CardModel, 
-  Transaction as TransactionModel, 
-  APIKey as APIKeyModel, 
-  Deposit as DepositModel, 
-  KYCDocument as KYCDocumentModel,
-  type IUser,
-  type ICard,
-  type ITransaction,
-  type IAPIKey,
-  type IDeposit,
-  type IKYCDocument
-} from "@shared/mongodb-schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -61,409 +47,267 @@ export interface IStorage {
   updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined>;
 }
 
-// MongoDB Storage implementation
-export class MongoStorage implements IStorage {
-  
-  // Helper function to convert MongoDB document to our interface types
-  private documentToUser(doc: IUser): User {
-    return {
-      id: doc._id.toString(),
-      username: doc.username,
-      password: doc.password,
-      email: doc.email,
-      firstName: doc.firstName,
-      lastName: doc.lastName,
-      phone: doc.phone || null,
-      role: doc.role,
-      kycStatus: doc.kycStatus,
-      kycDocuments: doc.kycDocuments || null,
-      createdAt: doc.createdAt
-    };
+// In-memory storage implementation
+export class MemStorage implements IStorage {
+  private users: Map<string, User> = new Map();
+  private cards: Map<string, Card> = new Map();
+  private transactions: Map<string, Transaction> = new Map();
+  private apiKeys: Map<string, ApiKey> = new Map();
+  private deposits: Map<string, Deposit> = new Map();
+  private kycDocuments: Map<string, KycDocument> = new Map();
+
+  constructor() {
+    this.initializeSampleData();
   }
 
-  private documentToCard(doc: ICard): Card {
-    return {
-      id: doc._id.toString(),
-      userId: doc.userId,
-      cardNumber: doc.cardNumber || null,
-      maskedNumber: doc.maskedNumber || null,
-      expiryDate: doc.expiryDate || null,
-      cvv: doc.cvv || null,
-      cardType: doc.cardType,
-      status: doc.status,
-      balance: doc.balance.toString(),
-      spendingLimit: doc.spendingLimit.toString(),
-      currency: doc.currency,
-      strowalletCardId: doc.strowalletCardId || null,
-      billingAddress: doc.billingAddress || null,
-      billingCity: doc.billingCity || null,
-      billingState: doc.billingState || null,
-      billingZip: doc.billingZip || null,
-      billingCountry: doc.billingCountry || null,
-      nameOnCard: doc.nameOnCard || null,
-      approvedAt: doc.approvedAt || null,
-      createdAt: doc.createdAt
+  private initializeSampleData() {
+    // Create a default user
+    const defaultUser: User = {
+      id: 'user-1',
+      username: 'demo',
+      password: '$2b$10$demohashedpassword',
+      email: 'demo@cardflow.com',
+      firstName: 'Demo',
+      lastName: 'User',
+      phone: null,
+      role: 'user',
+      kycStatus: 'pending',
+      kycDocuments: null,
+      createdAt: new Date(),
     };
-  }
+    this.users.set(defaultUser.id, defaultUser);
 
-  private documentToTransaction(doc: ITransaction): Transaction {
-    return {
-      id: doc._id.toString(),
-      cardId: doc.cardId,
-      merchant: doc.merchant,
-      amount: doc.amount.toString(),
-      currency: doc.currency,
-      status: doc.status,
-      type: doc.type,
-      description: doc.description || null,
-      transactionReference: doc.transactionReference || null,
-      createdAt: doc.createdAt
+    // Create an admin user
+    const adminUser: User = {
+      id: 'admin-1',
+      username: 'admin',
+      password: '$2b$10$adminhashedpassword',
+      email: 'admin@cardflow.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      phone: null,
+      role: 'admin',
+      kycStatus: 'approved',
+      kycDocuments: null,
+      createdAt: new Date(),
     };
-  }
-
-  private documentToApiKey(doc: IAPIKey): ApiKey {
-    return {
-      id: doc._id.toString(),
-      userId: doc.userId,
-      name: doc.name,
-      key: doc.key,
-      permissions: doc.permissions,
-      lastUsed: doc.lastUsed || null,
-      isActive: doc.isActive,
-      createdAt: doc.createdAt
-    };
-  }
-
-  private documentToDeposit(doc: IDeposit): Deposit {
-    return {
-      id: doc._id.toString(),
-      userId: doc.userId,
-      amount: doc.amount.toString(),
-      currency: doc.currency,
-      status: doc.status,
-      paymentMethod: doc.paymentMethod,
-      transactionReference: doc.transactionReference || null,
-      adminNotes: doc.adminNotes || null,
-      processedBy: doc.processedBy || null,
-      processedAt: doc.processedAt || null,
-      createdAt: doc.createdAt
-    };
-  }
-
-  private documentToKycDocument(doc: IKYCDocument): KycDocument {
-    return {
-      id: doc._id.toString(),
-      userId: doc.userId,
-      documentType: doc.documentType,
-      documentUrl: doc.documentUrl || null,
-      fileName: doc.fileName,
-      fileData: doc.fileData,
-      contentType: doc.contentType,
-      fileSize: doc.fileSize,
-      status: doc.status,
-      reviewedBy: doc.reviewedBy || null,
-      reviewNotes: doc.reviewNotes || null,
-      reviewedAt: doc.reviewedAt || null,
-      createdAt: doc.createdAt
-    };
+    this.users.set(adminUser.id, adminUser);
   }
 
   // User methods
   async getUser(id: string): Promise<User | undefined> {
-    try {
-      const user = await UserModel.findById(id);
-      return user ? this.documentToUser(user) : undefined;
-    } catch (error) {
-      console.error('Error getting user:', error);
-      return undefined;
-    }
+    return this.users.get(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    try {
-      const user = await UserModel.findOne({ username });
-      return user ? this.documentToUser(user) : undefined;
-    } catch (error) {
-      console.error('Error getting user by username:', error);
-      return undefined;
+    for (const user of Array.from(this.users.values())) {
+      if (user.username === username) {
+        return user;
+      }
     }
+    return undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    try {
-      const user = new UserModel(insertUser);
-      const savedUser = await user.save();
-      return this.documentToUser(savedUser);
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
+    const user: User = {
+      ...insertUser,
+      id: randomUUID(),
+      role: insertUser.role || 'user',
+      kycStatus: 'pending',
+      kycDocuments: null,
+      phone: insertUser.phone || null,
+      createdAt: new Date(),
+    };
+    this.users.set(user.id, user);
+    return user;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
-    try {
-      const user = await UserModel.findByIdAndUpdate(id, updates, { new: true });
-      return user ? this.documentToUser(user) : undefined;
-    } catch (error) {
-      console.error('Error updating user:', error);
-      return undefined;
-    }
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser = { ...user, ...updates };
+    this.users.set(id, updatedUser);
+    return updatedUser;
   }
 
   // Card methods
   async getCard(id: string): Promise<Card | undefined> {
-    try {
-      const card = await CardModel.findById(id);
-      return card ? this.documentToCard(card) : undefined;
-    } catch (error) {
-      console.error('Error getting card:', error);
-      return undefined;
-    }
+    return this.cards.get(id);
   }
 
   async getCardsByUserId(userId: string): Promise<Card[]> {
-    try {
-      const cards = await CardModel.find({ userId });
-      return cards.map(card => this.documentToCard(card));
-    } catch (error) {
-      console.error('Error getting cards by user ID:', error);
-      return [];
-    }
+    return Array.from(this.cards.values()).filter(card => card.userId === userId);
   }
 
   async createCard(insertCard: InsertCard): Promise<Card> {
-    try {
-      const cardData = {
-        ...insertCard,
-        balance: parseFloat(insertCard.spendingLimit || "1000.00") // Convert to number for MongoDB
-      };
-      const card = new CardModel(cardData);
-      const savedCard = await card.save();
-      return this.documentToCard(savedCard);
-    } catch (error) {
-      console.error('Error creating card:', error);
-      throw error;
-    }
+    const card: Card = {
+      ...insertCard,
+      id: randomUUID(),
+      cardNumber: insertCard.cardNumber || null,
+      maskedNumber: insertCard.maskedNumber || null,
+      expiryDate: insertCard.expiryDate || null,
+      cvv: insertCard.cvv || null,
+      balance: insertCard.balance || "0.00",
+      spendingLimit: insertCard.spendingLimit || "1000.00",
+      currency: insertCard.currency || "USDT",
+      cardType: insertCard.cardType || "virtual",
+      status: "pending",
+      strowalletCardId: insertCard.strowalletCardId || null,
+      billingAddress: insertCard.billingAddress || null,
+      billingCity: insertCard.billingCity || null,
+      billingState: insertCard.billingState || null,
+      billingZip: insertCard.billingZip || null,
+      billingCountry: insertCard.billingCountry || null,
+      nameOnCard: insertCard.nameOnCard || null,
+      approvedAt: null,
+      createdAt: new Date(),
+    };
+    this.cards.set(card.id, card);
+    return card;
   }
 
   async updateCard(id: string, updates: Partial<Card>): Promise<Card | undefined> {
-    try {
-      const updateData: any = { ...updates };
-      if (updates.balance !== undefined) {
-        updateData.balance = parseFloat(updates.balance);
-      }
-      if (updates.spendingLimit !== undefined) {
-        updateData.spendingLimit = parseFloat(updates.spendingLimit);
-      }
-      
-      const card = await CardModel.findByIdAndUpdate(id, updateData, { new: true });
-      return card ? this.documentToCard(card) : undefined;
-    } catch (error) {
-      console.error('Error updating card:', error);
-      return undefined;
-    }
+    const card = this.cards.get(id);
+    if (!card) return undefined;
+    
+    const updatedCard = { ...card, ...updates };
+    this.cards.set(id, updatedCard);
+    return updatedCard;
   }
 
   async deleteCard(id: string): Promise<boolean> {
-    try {
-      const result = await CardModel.findByIdAndDelete(id);
-      return !!result;
-    } catch (error) {
-      console.error('Error deleting card:', error);
-      return false;
-    }
+    return this.cards.delete(id);
   }
 
   // Transaction methods
   async getTransaction(id: string): Promise<Transaction | undefined> {
-    try {
-      const transaction = await TransactionModel.findById(id);
-      return transaction ? this.documentToTransaction(transaction) : undefined;
-    } catch (error) {
-      console.error('Error getting transaction:', error);
-      return undefined;
-    }
+    return this.transactions.get(id);
   }
 
   async getTransactionsByCardId(cardId: string): Promise<Transaction[]> {
-    try {
-      const transactions = await TransactionModel.find({ cardId }).sort({ createdAt: -1 });
-      return transactions.map(tx => this.documentToTransaction(tx));
-    } catch (error) {
-      console.error('Error getting transactions by card ID:', error);
-      return [];
-    }
+    return Array.from(this.transactions.values()).filter(tx => tx.cardId === cardId);
   }
 
   async getTransactionsByUserId(userId: string): Promise<Transaction[]> {
-    try {
-      // First get all cards for this user
-      const cards = await CardModel.find({ userId });
-      const cardIds = cards.map(card => card._id.toString());
-      
-      // Then get all transactions for those cards
-      const transactions = await TransactionModel.find({ cardId: { $in: cardIds } }).sort({ createdAt: -1 });
-      return transactions.map(tx => this.documentToTransaction(tx));
-    } catch (error) {
-      console.error('Error getting transactions by user ID:', error);
-      return [];
-    }
+    const userCards = await this.getCardsByUserId(userId);
+    const cardIds = userCards.map(card => card.id);
+    return Array.from(this.transactions.values()).filter(tx => cardIds.includes(tx.cardId));
   }
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    try {
-      const transactionData = {
-        ...insertTransaction,
-        amount: parseFloat(insertTransaction.amount) // Convert to number for MongoDB
-      };
-      const transaction = new TransactionModel(transactionData);
-      const savedTransaction = await transaction.save();
-      return this.documentToTransaction(savedTransaction);
-    } catch (error) {
-      console.error('Error creating transaction:', error);
-      throw error;
-    }
+    const transaction: Transaction = {
+      ...insertTransaction,
+      id: randomUUID(),
+      type: insertTransaction.type || 'purchase',
+      status: insertTransaction.status || 'pending',
+      currency: insertTransaction.currency || 'USDT',
+      description: insertTransaction.description || null,
+      transactionReference: insertTransaction.transactionReference || null,
+      createdAt: new Date(),
+    };
+    this.transactions.set(transaction.id, transaction);
+    return transaction;
   }
 
   // API Key methods
   async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
-    try {
-      const apiKeys = await APIKeyModel.find({ userId });
-      return apiKeys.map(key => this.documentToApiKey(key));
-    } catch (error) {
-      console.error('Error getting API keys by user ID:', error);
-      return [];
-    }
+    return Array.from(this.apiKeys.values()).filter(key => key.userId === userId);
   }
 
   async createApiKey(insertApiKey: InsertApiKey): Promise<ApiKey> {
-    try {
-      const apiKeyData = {
-        ...insertApiKey,
-        key: randomUUID() // Generate unique API key
-      };
-      const apiKey = new APIKeyModel(apiKeyData);
-      const savedApiKey = await apiKey.save();
-      return this.documentToApiKey(savedApiKey);
-    } catch (error) {
-      console.error('Error creating API key:', error);
-      throw error;
-    }
+    const apiKey: ApiKey = {
+      ...insertApiKey,
+      id: randomUUID(),
+      key: `ak_${randomUUID().replace(/-/g, '')}`,
+      permissions: insertApiKey.permissions || [],
+      lastUsed: null,
+      isActive: true,
+      createdAt: new Date(),
+    };
+    this.apiKeys.set(apiKey.id, apiKey);
+    return apiKey;
   }
 
   async updateApiKey(id: string, updates: Partial<ApiKey>): Promise<ApiKey | undefined> {
-    try {
-      const apiKey = await APIKeyModel.findByIdAndUpdate(id, updates, { new: true });
-      return apiKey ? this.documentToApiKey(apiKey) : undefined;
-    } catch (error) {
-      console.error('Error updating API key:', error);
-      return undefined;
-    }
+    const apiKey = this.apiKeys.get(id);
+    if (!apiKey) return undefined;
+    
+    const updatedApiKey = { ...apiKey, ...updates };
+    this.apiKeys.set(id, updatedApiKey);
+    return updatedApiKey;
   }
 
   // Deposit methods
   async getDeposit(id: string): Promise<Deposit | undefined> {
-    try {
-      const deposit = await DepositModel.findById(id);
-      return deposit ? this.documentToDeposit(deposit) : undefined;
-    } catch (error) {
-      console.error('Error getting deposit:', error);
-      return undefined;
-    }
+    return this.deposits.get(id);
   }
 
   async getDepositsByUserId(userId: string): Promise<Deposit[]> {
-    try {
-      const deposits = await DepositModel.find({ userId }).sort({ createdAt: -1 });
-      return deposits.map(deposit => this.documentToDeposit(deposit));
-    } catch (error) {
-      console.error('Error getting deposits by user ID:', error);
-      return [];
-    }
+    return Array.from(this.deposits.values()).filter(deposit => deposit.userId === userId);
   }
 
   async getAllDeposits(): Promise<Deposit[]> {
-    try {
-      const deposits = await DepositModel.find().sort({ createdAt: -1 });
-      return deposits.map(deposit => this.documentToDeposit(deposit));
-    } catch (error) {
-      console.error('Error getting all deposits:', error);
-      return [];
-    }
+    return Array.from(this.deposits.values());
   }
 
   async createDeposit(insertDeposit: InsertDeposit): Promise<Deposit> {
-    try {
-      const depositData = {
-        ...insertDeposit,
-        amount: parseFloat(insertDeposit.amount) // Convert to number for MongoDB
-      };
-      const deposit = new DepositModel(depositData);
-      const savedDeposit = await deposit.save();
-      return this.documentToDeposit(savedDeposit);
-    } catch (error) {
-      console.error('Error creating deposit:', error);
-      throw error;
-    }
+    const deposit: Deposit = {
+      ...insertDeposit,
+      id: randomUUID(),
+      status: insertDeposit.status || 'pending',
+      currency: insertDeposit.currency || 'ETB',
+      transactionReference: insertDeposit.transactionReference || null,
+      adminNotes: insertDeposit.adminNotes || null,
+      processedBy: null,
+      processedAt: null,
+      createdAt: new Date(),
+    };
+    this.deposits.set(deposit.id, deposit);
+    return deposit;
   }
 
   async updateDeposit(id: string, updates: Partial<Deposit>): Promise<Deposit | undefined> {
-    try {
-      const updateData: any = { ...updates };
-      if (updates.amount !== undefined) {
-        updateData.amount = parseFloat(updates.amount);
-      }
-      
-      const deposit = await DepositModel.findByIdAndUpdate(id, updateData, { new: true });
-      return deposit ? this.documentToDeposit(deposit) : undefined;
-    } catch (error) {
-      console.error('Error updating deposit:', error);
-      return undefined;
-    }
+    const deposit = this.deposits.get(id);
+    if (!deposit) return undefined;
+    
+    const updatedDeposit = { ...deposit, ...updates };
+    this.deposits.set(id, updatedDeposit);
+    return updatedDeposit;
   }
 
   // KYC methods
   async getKycDocumentsByUserId(userId: string): Promise<KycDocument[]> {
-    try {
-      const documents = await KYCDocumentModel.find({ userId }).sort({ createdAt: -1 });
-      return documents.map(doc => this.documentToKycDocument(doc));
-    } catch (error) {
-      console.error('Error getting KYC documents by user ID:', error);
-      return [];
-    }
+    return Array.from(this.kycDocuments.values()).filter(doc => doc.userId === userId);
   }
 
   async getAllKycDocuments(): Promise<KycDocument[]> {
-    try {
-      const documents = await KYCDocumentModel.find().sort({ createdAt: -1 });
-      return documents.map(doc => this.documentToKycDocument(doc));
-    } catch (error) {
-      console.error('Error getting all KYC documents:', error);
-      return [];
-    }
+    return Array.from(this.kycDocuments.values());
   }
 
   async createKycDocument(insertKycDocument: InsertKycDocument): Promise<KycDocument> {
-    try {
-      const document = new KYCDocumentModel(insertKycDocument);
-      const savedDocument = await document.save();
-      return this.documentToKycDocument(savedDocument);
-    } catch (error) {
-      console.error('Error creating KYC document:', error);
-      throw error;
-    }
+    const kycDocument: KycDocument = {
+      ...insertKycDocument,
+      id: randomUUID(),
+      documentUrl: insertKycDocument.documentUrl || null,
+      status: "pending",
+      reviewedBy: null,
+      reviewNotes: null,
+      reviewedAt: null,
+      createdAt: new Date(),
+    };
+    this.kycDocuments.set(kycDocument.id, kycDocument);
+    return kycDocument;
   }
 
   async updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined> {
-    try {
-      const document = await KYCDocumentModel.findByIdAndUpdate(id, updates, { new: true });
-      return document ? this.documentToKycDocument(document) : undefined;
-    } catch (error) {
-      console.error('Error updating KYC document:', error);
-      return undefined;
-    }
+    const kycDocument = this.kycDocuments.get(id);
+    if (!kycDocument) return undefined;
+    
+    const updatedKycDocument = { ...kycDocument, ...updates };
+    this.kycDocuments.set(id, updatedKycDocument);
+    return updatedKycDocument;
   }
 }
 
-// Export a singleton instance
-export const storage = new MongoStorage();
+export const storage = new MemStorage();

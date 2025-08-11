@@ -1,28 +1,36 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
-import { 
-  usersTable, 
-  cardsTable, 
-  transactionsTable, 
-  apiKeysTable, 
-  depositsTable, 
-  kycDocumentsTable 
-} from "@shared/schema";
+import mongoose from 'mongoose';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL environment variable is required");
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  throw new Error('MONGODB_URI must be set in environment variables');
 }
 
-const sql = neon(process.env.DATABASE_URL);
-export const db = drizzle(sql, {
-  schema: {
-    users: usersTable,
-    cards: cardsTable,
-    transactions: transactionsTable,
-    apiKeys: apiKeysTable,
-    deposits: depositsTable,
-    kycDocuments: kycDocumentsTable,
-  },
+// Connect to MongoDB
+export const connectToMongoDB = async () => {
+  try {
+    await mongoose.connect(MONGODB_URI);
+    console.log('Connected to MongoDB successfully');
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    process.exit(1);
+  }
+};
+
+// MongoDB connection instance
+export const db = mongoose.connection;
+
+// Handle connection events
+db.on('error', (error) => {
+  console.error('MongoDB connection error:', error);
 });
 
-export type DbType = typeof db;
+db.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
+
+process.on('SIGINT', async () => {
+  await mongoose.connection.close();
+  console.log('MongoDB connection closed');
+  process.exit(0);
+});

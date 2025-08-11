@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Deposit } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { DollarSign, CreditCard, Banknote } from "lucide-react";
 export default function Deposits() {
   const [selectedAmount, setSelectedAmount] = useState("");
 
-  const { data: deposits = [] } = useQuery({
+  const { data: deposits = [] } = useQuery<Deposit[]>({
     queryKey: ["/api/deposits"],
   });
 

@@ -655,11 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Username already exists" });
       }
       
-      // Hash password
-      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
-      const userData = { ...validatedData, password: hashedPassword };
-      
-      const user = await storage.createUser(userData);
+      const user = await storage.createUser(validatedData);
       
       // Return user data without password for frontend
       const { password, ...userResponse } = user;

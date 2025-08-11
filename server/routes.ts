@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { MemStorage } from "./storage";
+import { storage } from "./storage-mongodb";
 import { StrowalletService } from "./strowallet";
 import { 
   insertCardSchema, 
@@ -13,7 +13,6 @@ import { z } from "zod";
 import bcrypt from "bcrypt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  const storage = new MemStorage();
   const DEFAULT_USER_ID = 'user-1'; // For demo purposes
 
   // Get all cards for the current user

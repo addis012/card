@@ -792,6 +792,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "Logged out successfully" });
   });
 
+  // Make user admin (development endpoint)
+  app.post("/api/auth/make-admin", async (req, res) => {
+    try {
+      const { username } = req.body;
+      if (!username) {
+        return res.status(400).json({ message: "Username is required" });
+      }
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const updatedUser = await storage.updateUser(user.id, { role: "admin" });
+      res.json({ message: "User role updated to admin", user: updatedUser });
+    } catch (error) {
+      console.error("Error making user admin:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Card address management endpoints
   app.get("/api/cards/:id/address", async (req, res) => {
     try {

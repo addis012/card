@@ -20,7 +20,8 @@ import {
   XCircle, 
   Clock,
   CreditCard,
-  Eye
+  Eye,
+  Settings
 } from "lucide-react";
 import type { Deposit, KycDocument } from "@shared/schema";
 
@@ -174,11 +175,112 @@ export default function AdminPanel() {
           </Card>
         </div>
 
-        <Tabs defaultValue="deposits" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="settings" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="settings">Settings & Rates</TabsTrigger>
             <TabsTrigger value="deposits">ETB Deposits</TabsTrigger>
             <TabsTrigger value="kyc">KYC Verification</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Exchange Rates & Fees */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Exchange Rates & Fees
+                  </CardTitle>
+                  <CardDescription>
+                    Configure conversion rates and transaction fees
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="etb-rate">ETB to USDT Rate</Label>
+                    <Input
+                      id="etb-rate"
+                      placeholder="0.018"
+                      defaultValue="0.018"
+                      data-testid="input-etb-rate"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="conversion-fee">Conversion Fee (%)</Label>
+                    <Input
+                      id="conversion-fee"
+                      placeholder="2.5"
+                      defaultValue="2.5"
+                      data-testid="input-conversion-fee"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="transaction-fee">Transaction Fee (USDT)</Label>
+                    <Input
+                      id="transaction-fee"
+                      placeholder="0.50"
+                      defaultValue="0.50"
+                      data-testid="input-transaction-fee"
+                    />
+                  </div>
+                  
+                  <Button className="w-full" data-testid="button-save-rates">
+                    Save Exchange Rates
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Deposit Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Deposit Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Configure deposit limits and processing options
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="min-deposit">Minimum Deposit (ETB)</Label>
+                    <Input
+                      id="min-deposit"
+                      placeholder="100"
+                      defaultValue="100"
+                      data-testid="input-min-deposit"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="max-deposit">Maximum Deposit (ETB)</Label>
+                    <Input
+                      id="max-deposit"
+                      placeholder="50000"
+                      defaultValue="50000"
+                      data-testid="input-max-deposit"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="processing-time">Processing Time (hours)</Label>
+                    <Input
+                      id="processing-time"
+                      placeholder="24"
+                      defaultValue="24"
+                      data-testid="input-processing-time"
+                    />
+                  </div>
+                  
+                  <Button className="w-full" data-testid="button-save-deposit-settings">
+                    Save Deposit Settings
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="deposits">
             <Card>

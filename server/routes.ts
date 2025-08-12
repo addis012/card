@@ -918,6 +918,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete user by username endpoint (development)
+  app.delete("/api/admin/users/:username", async (req, res) => {
+    try {
+      const { username } = req.params;
+      const deleted = await storage.deleteUserByUsername(username);
+      
+      if (deleted) {
+        res.json({ message: `User '${username}' deleted successfully` });
+      } else {
+        res.status(404).json({ message: `User '${username}' not found` });
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // Card address management endpoints
   app.get("/api/cards/:id/address", async (req, res) => {
     try {

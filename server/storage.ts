@@ -29,6 +29,8 @@ export interface IStorage {
   getUserById(id: string): Promise<UserPlain | undefined>;
   getUser(id: string): Promise<UserPlain | undefined>; // Alias for getUserById
   updateUser(id: string, updates: Partial<UserPlain>): Promise<UserPlain | undefined>;
+  deleteUser(id: string): Promise<boolean>;
+  deleteUserByUsername(username: string): Promise<boolean>;
 
   // Card methods
   createCard(insertCard: InsertCard): Promise<CardPlain>;
@@ -106,6 +108,16 @@ export class MongoStorage implements IStorage {
   async updateUser(id: string, updates: Partial<UserPlain>): Promise<UserPlain | undefined> {
     const user = await UserModel.findByIdAndUpdate(id, updates, { new: true });
     return user ? this.toPlain<UserPlain>(user) : undefined;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await UserModel.findByIdAndDelete(id);
+    return !!result;
+  }
+
+  async deleteUserByUsername(username: string): Promise<boolean> {
+    const result = await UserModel.findOneAndDelete({ username });
+    return !!result;
   }
 
   // Card methods

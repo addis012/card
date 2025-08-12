@@ -20,26 +20,29 @@ export default function Cards() {
     queryKey: ["/api/cards"],
   });
 
-  // Get real card transactions from Strowallet
-  const { data: cardTransactions = [] } = useQuery({
-    queryKey: ["/api/cards", primaryCard?.id, "strowallet-transactions"],
-    enabled: !!primaryCard?.id,
-  });
-
   const { data: transactions = [] } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
   });
 
   const primaryCard = Array.isArray(cards) ? cards[0] : null;
 
+  // Get real card transactions from Strowallet
+  const { data: cardTransactions = [] } = useQuery({
+    queryKey: ["/api/cards", primaryCard?.id, "strowallet-transactions"],
+    enabled: !!primaryCard?.id,
+  });
+
   // Block/Unblock card mutation
   const blockCardMutation = useMutation({
     mutationFn: async (blocked: boolean) => {
       if (!primaryCard?.id) throw new Error("No card selected");
-      return apiRequest(`/api/cards/${primaryCard.id}/block`, {
+      const response = await fetch(`/api/cards/${primaryCard.id}/block`, {
         method: "PUT",
-        body: { blocked },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocked }),
       });
+      if (!response.ok) throw new Error("Failed to update card status");
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
@@ -61,10 +64,13 @@ export default function Cards() {
   const fundCardMutation = useMutation({
     mutationFn: async (amount: number) => {
       if (!primaryCard?.id) throw new Error("No card selected");
-      return apiRequest(`/api/cards/${primaryCard.id}/fund`, {
+      const response = await fetch(`/api/cards/${primaryCard.id}/fund`, {
         method: "POST",
-        body: { amount, currency: "USD" },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, currency: "USD" }),
       });
+      if (!response.ok) throw new Error("Failed to fund card");
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
@@ -254,7 +260,7 @@ export default function Cards() {
           </div>
           
           <div className="space-y-3">
-            {Array.isArray(cardTransactions?.transactions) && cardTransactions.transactions.slice(0, 5).map((transaction: any) => (
+            {Array.isArray((cardTransactions as any)?.transactions) && (cardTransactions as any).transactions.slice(0, 5).map((transaction: any) => (
               <div key={transaction.transaction_id} className="flex items-center justify-between bg-slate-700/30 rounded-xl p-4" data-testid={`transaction-${transaction.transaction_id}`}>
                 <div className="flex items-center space-x-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -280,7 +286,7 @@ export default function Cards() {
             ))}
             
             {/* Fallback to regular transactions if no Strowallet transactions */}
-            {(!cardTransactions?.transactions || cardTransactions.transactions.length === 0) && Array.isArray(transactions) && transactions.slice(0, 5).map((transaction: any) => (
+            {(!(cardTransactions as any)?.transactions || (cardTransactions as any).transactions.length === 0) && Array.isArray(transactions) && transactions.slice(0, 5).map((transaction: any) => (
               <div key={transaction.id} className="flex items-center justify-between bg-slate-700/30 rounded-xl p-4" data-testid={`transaction-${transaction.id}`}>
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">

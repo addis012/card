@@ -6,6 +6,14 @@ CardFlow Pro is a comprehensive card issuing and management platform that provid
 
 ## Recent Changes (August 2025)
 
+### Card Functionality Complete ✅ (August 12, 2025)
+- **Real Card Details Display**: Cards now show actual Strowallet data (card number, expiry date, CVV)
+- **Live Transaction History**: Integrated real Strowallet transaction API showing merchant purchases, funding, and subscriptions
+- **Fund Card Feature**: Implemented working fund functionality with amount input and balance updates
+- **Block/Unblock Buttons**: Added functional security controls to freeze/unfreeze cards via Strowallet API
+- **Dynamic Balance Display**: Shows real-time card balance in proper currency (USDT)
+- **Error Resolution**: Fixed JavaScript initialization error with primaryCard variable ordering
+
 ### Fixed Admin Dashboard Layout ✅ (August 12, 2025)
 - **Separated Admin and User Layouts**: Admin routes now render with only the admin sidebar, eliminating duplicate sidebars
 - **Fixed Dashboard Positioning**: Main dashboard content now appears at the top properly without sidebar interference

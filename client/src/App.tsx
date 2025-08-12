@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -26,36 +26,26 @@ function AuthenticatedRoutes() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <Switch>
-      {/* Admin routes - completely separate admin system */}
-      <Route path="/admin" nest>
-        <AdminApp />
-      </Route>
+    <div className="min-h-screen bg-gradient-to-b from-slate-800 via-blue-900 to-slate-900">
+      <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      {/* Regular user routes - render with user sidebar */}
-      <Route>
-        <div className="min-h-screen bg-gradient-to-b from-slate-800 via-blue-900 to-slate-900">
-          <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          
-          <div className="lg:ml-80 min-h-screen">
-            <main className="p-0">
-              <Switch>
-                <Route path="/" component={Dashboard} />
-                <Route path="/dashboard" component={Dashboard} />
-                <Route path="/cards" component={Cards} />
-                <Route path="/transactions" component={Transactions} />
-                <Route path="/deposits" component={Deposits} />
-                <Route path="/api" component={ApiSettings} />
-                <Route path="/cards/:id/address" component={CardAddress} />
-                <Route path="/profile" component={Profile} />
-                <Route component={NotFound} />
-              </Switch>
-            </main>
-          </div>
-        </div>
-      </Route>
-    </Switch>
+      <div className="lg:ml-80 min-h-screen">
+        <main className="p-0">
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/cards" component={Cards} />
+            <Route path="/transactions" component={Transactions} />
+            <Route path="/deposits" component={Deposits} />
+            <Route path="/api" component={ApiSettings} />
+            <Route path="/cards/:id/address" component={CardAddress} />
+            <Route path="/profile" component={Profile} />
+            <Route component={NotFound} />
+          </Switch>
+        </main>
+      </div>
+    </div>
   );
 }
 
@@ -74,7 +64,13 @@ function PublicRoutes() {
 }
 
 function Router() {
+  const [location] = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Admin routes should be handled completely separately
+  if (location.startsWith('/admin')) {
+    return <AdminApp />;
+  }
 
   if (isLoading) {
     return (

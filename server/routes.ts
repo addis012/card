@@ -82,10 +82,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin middleware to protect admin routes
+  const requireAdmin = (req: any, res: any, next: any) => {
+    if (!req.session?.admin) {
+      return res.status(401).json({ message: "Admin authentication required" });
+    }
+    next();
+  };
+
   // Admin: Create card via Strowallet API based on KYC documents
-  app.post("/api/admin/create-card", async (req, res) => {
+  app.post("/api/admin/create-card", requireAdmin, async (req, res) => {
     try {
-      const { userId, cardType = "VIRTUAL", spendingLimit } = req.body;
+      const { userId, cardType = "VIRTUAL", spendingLimit, bypassKYC = false } = req.body;
       
       if (!userId) {
         return res.status(400).json({ message: "User ID is required" });
@@ -97,12 +105,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Check if user has approved KYC documents
-      const kycDocuments = await storage.getKycDocumentsByUserId(userId);
-      const hasApprovedDocs = kycDocuments.some(doc => doc.status === "approved");
-      
-      if (!hasApprovedDocs) {
-        return res.status(400).json({ message: "User must have approved KYC documents before card creation" });
+      // Check if user has approved KYC documents (unless admin bypasses or user is admin)
+      if (!bypassKYC && user.role !== 'admin') {
+        const kycDocuments = await storage.getKycDocumentsByUserId(userId);
+        const hasApprovedDocs = kycDocuments.some(doc => doc.status === "approved");
+        
+        if (!hasApprovedDocs) {
+          return res.status(400).json({ 
+            message: "User must have approved KYC documents before card creation. Use bypassKYC: true to override." 
+          });
+        }
       }
 
       // Initialize Strowallet service
@@ -873,14 +885,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     res.json({ message: "Admin logged out successfully" });
   });
-
-  // Admin middleware to protect admin routes
-  const requireAdmin = (req: any, res: any, next: any) => {
-    if (!req.session?.admin) {
-      return res.status(401).json({ message: "Admin authentication required" });
-    }
-    next();
-  };
 
   // Create initial admin user endpoint (for setup)
   app.post("/api/admin/setup", async (req, res) => {

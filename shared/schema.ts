@@ -1,191 +1,110 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { pgTable, text, timestamp, decimal, boolean, varchar, pgEnum } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// MongoDB Interfaces
-export interface User extends Document {
-  _id: mongoose.Types.ObjectId;
-  username: string;
-  password: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string | null;
-  role: 'user' | 'admin';
-  kycStatus: 'pending' | 'approved' | 'rejected';
-  kycDocuments?: string | null;
-  createdAt: Date;
-}
+// Define enums
+export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
+export const kycStatusEnum = pgEnum('kyc_status', ['pending', 'approved', 'rejected']);
+export const cardTypeEnum = pgEnum('card_type', ['virtual', 'physical']);
+export const cardStatusEnum = pgEnum('card_status', ['pending', 'active', 'frozen', 'cancelled']);
+export const transactionStatusEnum = pgEnum('transaction_status', ['pending', 'completed', 'failed', 'cancelled']);
+export const transactionTypeEnum = pgEnum('transaction_type', ['purchase', 'withdrawal', 'refund', 'fee', 'deposit']);
+export const depositStatusEnum = pgEnum('deposit_status', ['pending', 'processing', 'completed', 'failed']);
+export const paymentMethodEnum = pgEnum('payment_method', ['bank_transfer', 'mobile_money']);
+export const documentTypeEnum = pgEnum('document_type', ['passport', 'id_card', 'driving_license', 'selfie']);
+export const documentStatusEnum = pgEnum('document_status', ['pending', 'approved', 'rejected']);
 
-export interface Card extends Document {
-  _id: mongoose.Types.ObjectId;
-  userId: string;
-  cardNumber?: string | null;
-  maskedNumber?: string | null;
-  expiryDate?: string | null;
-  cvv?: string | null;
-  cardType: 'virtual' | 'physical';
-  status: 'pending' | 'active' | 'frozen' | 'cancelled';
-  balance: string;
-  spendingLimit: string;
-  currency: string;
-  strowalletCardId?: string | null;
-  billingAddress?: string | null;
-  billingCity?: string | null;
-  billingState?: string | null;
-  billingZip?: string | null;
-  billingCountry?: string | null;
-  nameOnCard?: string | null;
-  approvedAt?: Date | null;
-  createdAt: Date;
-}
-
-export interface Transaction extends Document {
-  _id: mongoose.Types.ObjectId;
-  cardId: string;
-  merchant: string;
-  amount: string;
-  currency: string;
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
-  type: 'purchase' | 'withdrawal' | 'refund' | 'fee' | 'deposit';
-  description?: string | null;
-  transactionReference?: string | null;
-  createdAt: Date;
-}
-
-export interface ApiKey extends Document {
-  _id: mongoose.Types.ObjectId;
-  userId: string;
-  name: string;
-  key: string;
-  permissions: string[];
-  lastUsed?: Date | null;
-  isActive: boolean;
-  createdAt: Date;
-}
-
-export interface Deposit extends Document {
-  _id: mongoose.Types.ObjectId;
-  userId: string;
-  amount: string;
-  currency: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  paymentMethod: 'bank_transfer' | 'mobile_money';
-  transactionReference?: string | null;
-  adminNotes?: string | null;
-  processedBy?: string | null;
-  processedAt?: Date | null;
-  createdAt: Date;
-}
-
-export interface KycDocument extends Document {
-  _id: mongoose.Types.ObjectId;
-  userId: string;
-  documentType: 'passport' | 'id_card' | 'driving_license' | 'selfie';
-  documentUrl?: string | null;
-  fileName: string;
-  fileData: string;
-  contentType: string;
-  fileSize: string;
-  status: 'pending' | 'approved' | 'rejected';
-  reviewedBy?: string | null;
-  reviewNotes?: string | null;
-  reviewedAt?: Date | null;
-  createdAt: Date;
-}
-
-// MongoDB Schemas
-const userSchema = new Schema<User>({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  phone: { type: String, default: null },
-  role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  kycStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  kycDocuments: { type: String, default: null },
-  createdAt: { type: Date, default: Date.now }
+// Define tables
+export const users = pgTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  username: varchar('username', { length: 255 }).notNull().unique(),
+  password: text('password').notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  firstName: varchar('first_name', { length: 255 }).notNull(),
+  lastName: varchar('last_name', { length: 255 }).notNull(),
+  phone: varchar('phone', { length: 50 }),
+  role: userRoleEnum('role').notNull().default('user'),
+  kycStatus: kycStatusEnum('kyc_status').notNull().default('pending'),
+  kycDocuments: text('kyc_documents'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-const cardSchema = new Schema<Card>({
-  userId: { type: String, required: true },
-  cardNumber: { type: String, default: null },
-  maskedNumber: { type: String, default: null },
-  expiryDate: { type: String, default: null },
-  cvv: { type: String, default: null },
-  cardType: { type: String, enum: ['virtual', 'physical'], default: 'virtual' },
-  status: { type: String, enum: ['pending', 'active', 'frozen', 'cancelled'], default: 'pending' },
-  balance: { type: String, default: '0.00' },
-  spendingLimit: { type: String, default: '1000.00' },
-  currency: { type: String, default: 'USDT' },
-  strowalletCardId: { type: String, default: null },
-  billingAddress: { type: String, default: null },
-  billingCity: { type: String, default: null },
-  billingState: { type: String, default: null },
-  billingZip: { type: String, default: null },
-  billingCountry: { type: String, default: null },
-  nameOnCard: { type: String, default: null },
-  approvedAt: { type: Date, default: null },
-  createdAt: { type: Date, default: Date.now }
+export const cards = pgTable('cards', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id),
+  cardNumber: varchar('card_number', { length: 20 }),
+  maskedNumber: varchar('masked_number', { length: 20 }),
+  expiryDate: varchar('expiry_date', { length: 10 }),
+  cvv: varchar('cvv', { length: 4 }),
+  cardType: cardTypeEnum('card_type').notNull().default('virtual'),
+  status: cardStatusEnum('status').notNull().default('pending'),
+  balance: decimal('balance', { precision: 12, scale: 2 }).notNull().default('0.00'),
+  spendingLimit: decimal('spending_limit', { precision: 12, scale: 2 }).notNull().default('1000.00'),
+  currency: varchar('currency', { length: 10 }).notNull().default('USDT'),
+  strowalletCardId: varchar('strowallet_card_id', { length: 255 }),
+  billingAddress: text('billing_address'),
+  billingCity: varchar('billing_city', { length: 255 }),
+  billingState: varchar('billing_state', { length: 255 }),
+  billingZip: varchar('billing_zip', { length: 20 }),
+  billingCountry: varchar('billing_country', { length: 255 }),
+  nameOnCard: varchar('name_on_card', { length: 255 }),
+  approvedAt: timestamp('approved_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-const transactionSchema = new Schema<Transaction>({
-  cardId: { type: String, required: true },
-  merchant: { type: String, required: true },
-  amount: { type: String, required: true },
-  currency: { type: String, default: 'USDT' },
-  status: { type: String, enum: ['pending', 'completed', 'failed', 'cancelled'], default: 'pending' },
-  type: { type: String, enum: ['purchase', 'withdrawal', 'refund', 'fee', 'deposit'], default: 'purchase' },
-  description: { type: String, default: null },
-  transactionReference: { type: String, default: null },
-  createdAt: { type: Date, default: Date.now }
+export const transactions = pgTable('transactions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  cardId: text('card_id').notNull().references(() => cards.id),
+  merchant: varchar('merchant', { length: 255 }).notNull(),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 10 }).notNull().default('USDT'),
+  status: transactionStatusEnum('status').notNull().default('pending'),
+  type: transactionTypeEnum('type').notNull().default('purchase'),
+  description: text('description'),
+  transactionReference: varchar('transaction_reference', { length: 255 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-const apiKeySchema = new Schema<ApiKey>({
-  userId: { type: String, required: true },
-  name: { type: String, required: true },
-  key: { type: String, required: true, unique: true },
-  permissions: { type: [String], default: [] },
-  lastUsed: { type: Date, default: null },
-  isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now }
+export const apiKeys = pgTable('api_keys', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id),
+  name: varchar('name', { length: 255 }).notNull(),
+  key: varchar('key', { length: 255 }).notNull().unique(),
+  permissions: text('permissions').array(),
+  lastUsed: timestamp('last_used'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-const depositSchema = new Schema<Deposit>({
-  userId: { type: String, required: true },
-  amount: { type: String, required: true },
-  currency: { type: String, default: 'ETB' },
-  status: { type: String, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending' },
-  paymentMethod: { type: String, enum: ['bank_transfer', 'mobile_money'], required: true },
-  transactionReference: { type: String, default: null },
-  adminNotes: { type: String, default: null },
-  processedBy: { type: String, default: null },
-  processedAt: { type: Date, default: null },
-  createdAt: { type: Date, default: Date.now }
+export const deposits = pgTable('deposits', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  currency: varchar('currency', { length: 10 }).notNull().default('ETB'),
+  status: depositStatusEnum('status').notNull().default('pending'),
+  paymentMethod: paymentMethodEnum('payment_method').notNull(),
+  transactionReference: varchar('transaction_reference', { length: 255 }),
+  adminNotes: text('admin_notes'),
+  processedBy: text('processed_by').references(() => users.id),
+  processedAt: timestamp('processed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-const kycDocumentSchema = new Schema<KycDocument>({
-  userId: { type: String, required: true },
-  documentType: { type: String, enum: ['passport', 'id_card', 'driving_license', 'selfie'], required: true },
-  documentUrl: { type: String, default: null },
-  fileName: { type: String, required: true },
-  fileData: { type: String, required: true },
-  contentType: { type: String, required: true },
-  fileSize: { type: String, required: true },
-  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  reviewedBy: { type: String, default: null },
-  reviewNotes: { type: String, default: null },
-  reviewedAt: { type: Date, default: null },
-  createdAt: { type: Date, default: Date.now }
+export const kycDocuments = pgTable('kyc_documents', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id),
+  documentType: documentTypeEnum('document_type').notNull(),
+  documentUrl: text('document_url'),
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  fileData: text('file_data').notNull(),
+  contentType: varchar('content_type', { length: 100 }).notNull(),
+  fileSize: varchar('file_size', { length: 20 }).notNull(),
+  status: documentStatusEnum('status').notNull().default('pending'),
+  reviewedBy: text('reviewed_by').references(() => users.id),
+  reviewNotes: text('review_notes'),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
-
-// Export models
-export const UserModel = mongoose.model<User>('User', userSchema);
-export const CardModel = mongoose.model<Card>('Card', cardSchema);
-export const TransactionModel = mongoose.model<Transaction>('Transaction', transactionSchema);
-export const ApiKeyModel = mongoose.model<ApiKey>('ApiKey', apiKeySchema);
-export const DepositModel = mongoose.model<Deposit>('Deposit', depositSchema);
-export const KycDocumentModel = mongoose.model<KycDocument>('KycDocument', kycDocumentSchema);
 
 // Validation schemas using Zod
 export const insertUserSchema = z.object({

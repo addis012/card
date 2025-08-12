@@ -632,6 +632,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Strowallet Webhook endpoint for real-time card notifications
+  app.post("/api/webhook/strowallet", async (req, res) => {
+    try {
+      console.log("=== Strowallet Webhook Received ===");
+      console.log("Headers:", JSON.stringify(req.headers, null, 2));
+      console.log("Body:", JSON.stringify(req.body, null, 2));
+      
+      const webhookData = req.body;
+      
+      // Process different webhook types
+      if (webhookData.event_type) {
+        switch (webhookData.event_type) {
+          case "card.created":
+            console.log(`Card created: ${webhookData.card_id}`);
+            // Update local card status
+            if (webhookData.card_id) {
+              const cards = await storage.getAllCards();
+              const card = cards.find(c => c.strowalletCardId === webhookData.card_id?.toString());
+              if (card) {
+                await storage.updateCard(card.id, {
+                  status: "active",
+                  cardNumber: webhookData.card_number || card.cardNumber,
+                  approvedAt: new Date()
+                });
+                console.log(`Updated card ${card.id} status to active`);
+              }
+            }
+            break;
+            
+          case "card.funded":
+            console.log(`Card funded: ${webhookData.card_id} with ${webhookData.amount}`);
+            // Update card balance
+            if (webhookData.card_id && webhookData.amount) {
+              const cards = await storage.getAllCards();
+              const card = cards.find(c => c.strowalletCardId === webhookData.card_id?.toString());
+              if (card) {
+                const newBalance = (parseFloat(card.balance) + parseFloat(webhookData.amount)).toFixed(2);
+                await storage.updateCard(card.id, { balance: newBalance });
+                console.log(`Updated card ${card.id} balance to ${newBalance}`);
+              }
+            }
+            break;
+            
+          case "transaction.created":
+            console.log(`Transaction created: ${webhookData.transaction_id} on card ${webhookData.card_id}`);
+            // Create transaction record
+            if (webhookData.card_id) {
+              const cards = await storage.getAllCards();
+              const card = cards.find(c => c.strowalletCardId === webhookData.card_id?.toString());
+              if (card) {
+                await storage.createTransaction({
+                  cardId: card.id,
+                  amount: webhookData.amount || "0",
+                  description: webhookData.description || "Webhook transaction",
+                  merchant: webhookData.merchant_name || "Unknown",
+                  type: webhookData.transaction_type === "debit" ? "purchase" : "deposit"
+                });
+                console.log(`Created transaction for card ${card.id}`);
+              }
+            }
+            break;
+            
+          default:
+            console.log(`Unknown webhook event type: ${webhookData.event_type}`);
+        }
+      }
+      
+      // Always respond with 200 to acknowledge receipt
+      res.status(200).json({ message: "Webhook received successfully", received_at: new Date().toISOString() });
+    } catch (error) {
+      console.error("Error processing Strowallet webhook:", error);
+      res.status(500).json({ message: "Error processing webhook", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
+
   // Create an admin user for testing
   app.post("/api/admin/create-test-user", async (req, res) => {
     try {

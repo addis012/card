@@ -35,6 +35,7 @@ export interface IStorage {
   // Card methods
   createCard(insertCard: InsertCard): Promise<CardPlain>;
   getCardsByUserId(userId: string): Promise<CardPlain[]>;
+  getAllCards(): Promise<CardPlain[]>;
   getCardById(id: string): Promise<CardPlain | undefined>;
   getCard(id: string): Promise<CardPlain | undefined>; // Alias for getCardById
   updateCard(id: string, updates: Partial<CardPlain>): Promise<CardPlain | undefined>;
@@ -129,6 +130,11 @@ export class MongoStorage implements IStorage {
 
   async getCardsByUserId(userId: string): Promise<CardPlain[]> {
     const cards = await CardModel.find({ userId });
+    return cards.map(card => this.toPlain<CardPlain>(card));
+  }
+
+  async getAllCards(): Promise<CardPlain[]> {
+    const cards = await CardModel.find();
     return cards.map(card => this.toPlain<CardPlain>(card));
   }
 

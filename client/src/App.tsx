@@ -4,12 +4,14 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import Dashboard from "@/pages/dashboard";
 import Cards from "@/pages/cards";
 import Transactions from "@/pages/transactions";
 import ApiSettings from "@/pages/api-settings";
 import Register from "@/pages/register";
 import Login from "@/pages/login";
+import AdminLogin from "@/pages/admin-login";
 import AdminApp from "@/pages/admin-app";
 import Deposits from "@/pages/deposits";
 import CardAddress from "@/pages/card-address";
@@ -64,6 +66,7 @@ function PublicRoutes() {
         <Route path="/" component={LandingPage} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
+        <Route path="/admin-login" component={AdminLogin} />
         <Route component={LandingPage} />
       </Switch>
     </div>
@@ -91,10 +94,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AdminAuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </AdminAuthProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

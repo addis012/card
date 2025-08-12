@@ -24,27 +24,36 @@ function AuthenticatedRoutes() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-800 via-blue-900 to-slate-900">
-      <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <Switch>
+      {/* Admin routes - render with admin sidebar only */}
+      <Route path="/admin">
+        <AdminPanel />
+      </Route>
       
-      <div className="lg:ml-80 min-h-screen">
-        <main className="p-0">
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/dashboard" component={Dashboard} />
-            <Route path="/cards" component={Cards} />
-            <Route path="/transactions" component={Transactions} />
-            <Route path="/deposits" component={Deposits} />
-            <Route path="/api" component={ApiSettings} />
-            <Route path="/admin" component={AdminPanel} />
-            <Route path="/cards/:id/address" component={CardAddress} />
-            <Route path="/profile" component={Profile} />
-            <Route component={NotFound} />
-          </Switch>
-        </main>
-      </div>
-    </div>
+      {/* Regular user routes - render with user sidebar */}
+      <Route>
+        <div className="min-h-screen bg-gradient-to-b from-slate-800 via-blue-900 to-slate-900">
+          <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
+          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          
+          <div className="lg:ml-80 min-h-screen">
+            <main className="p-0">
+              <Switch>
+                <Route path="/" component={Dashboard} />
+                <Route path="/dashboard" component={Dashboard} />
+                <Route path="/cards" component={Cards} />
+                <Route path="/transactions" component={Transactions} />
+                <Route path="/deposits" component={Deposits} />
+                <Route path="/api" component={ApiSettings} />
+                <Route path="/cards/:id/address" component={CardAddress} />
+                <Route path="/profile" component={Profile} />
+                <Route component={NotFound} />
+              </Switch>
+            </main>
+          </div>
+        </div>
+      </Route>
+    </Switch>
   );
 }
 

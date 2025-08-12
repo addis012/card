@@ -685,6 +685,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 await storage.createTransaction({
                   cardId: card.id,
                   amount: webhookData.amount || "0",
+                  currency: "USDT",
                   description: webhookData.description || "Webhook transaction",
                   merchant: webhookData.merchant_name || "Unknown",
                   type: webhookData.transaction_type === "debit" ? "purchase" : "deposit"

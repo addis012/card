@@ -124,6 +124,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create card via Strowallet API
       const cardHolderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
+      console.log("About to call Strowallet API with user:", JSON.stringify(user, null, 2));
+      console.log("Card holder name:", cardHolderName);
+      
       const strowalletCard = await strowalletService.createCard({
         name_on_card: cardHolderName,
         card_type: "visa",
@@ -132,6 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerEmail: user.email || `${user.username}@example.com`,
         mode: process.env.NODE_ENV === "development" ? "sandbox" : undefined,
       });
+      
+      console.log("Received response from Strowallet:", JSON.stringify(strowalletCard, null, 2));
 
       // Store card in our database
       const card = await storage.createCard({

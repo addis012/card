@@ -18,8 +18,10 @@ CardFlow Pro is a comprehensive card issuing and management platform that provid
 - **Block/Unblock Buttons**: Added functional security controls to freeze/unfreeze cards via Strowallet API
 - **Dynamic Balance Display**: Shows real-time card balance in proper currency (USDT)
 - **Error Resolution**: Fixed JavaScript initialization error with primaryCard variable ordering
-- **Latest Test Cards**: Created Card IDs 3359478857, 8546538701 for test accounts with live API integration
+- **Latest Test Cards**: Created Card IDs 3359478857, 8546538701, 9932203260, 6699792326 with live API integration
 - **Webhook Integration**: Real-time notifications configured at https://workspace.wogisec814.replit.app/api/webhook/strowallet
+- **Production Mode Discovery**: Identified IP restriction preventing production API calls (34.41.187.217 needs whitelisting)
+- **Sandbox vs Production**: Confirmed sandbox uses test funds, production would deduct real balance but requires IP whitelisting
 
 ### Fixed Admin Dashboard Layout ✅ (August 12, 2025)
 - **Separated Admin and User Layouts**: Admin routes now render with only the admin sidebar, eliminating duplicate sidebars

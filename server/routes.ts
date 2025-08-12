@@ -133,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         public_key: process.env.STROWALLET_PUBLIC_KEY || "",
         amount: (spendingLimit || 1000).toString(),
         customerEmail: user.email || `${user.username}@example.com`,
-        mode: process.env.NODE_ENV === "development" ? "sandbox" : undefined,
+        // mode omitted to use default production mode which deducts from real balance
       });
       
       console.log("Received response from Strowallet:", JSON.stringify(strowalletCard, null, 2));
@@ -1134,7 +1134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         public_key: process.env.STROWALLET_PUBLIC_KEY || "",
         amount: (spendingLimit || 1000).toString(),
         customerEmail: user.email || `${user.username}@example.com`,
-        mode: process.env.NODE_ENV === "development" ? "sandbox" : undefined,
+        // mode omitted to use default production mode which deducts from real balance
         billing_address: billingAddress,
         billing_city: billingCity,
         billing_state: billingState,

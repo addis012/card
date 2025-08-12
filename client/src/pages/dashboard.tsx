@@ -132,11 +132,11 @@ export default function Dashboard() {
               {/* Card Number */}
               <div className="mb-6">
                 <p className="text-white text-xl font-mono tracking-wider">
-                  {primaryCard.maskedNumber || '**** **** **** 3966'}
+                  {primaryCard.maskedNumber || '**** **** **** ****'}
                 </p>
                 <div className="flex justify-between mt-2 text-xs text-white/70">
-                  <span>exp: 10 / 27</span>
-                  <span>50***</span>
+                  <span>exp: {primaryCard.expiryDate || "MM/YY"}</span>
+                  <span>{primaryCard.cvv ? "***" : "***"}</span>
                 </div>
               </div>
 
@@ -158,7 +158,7 @@ export default function Dashboard() {
             {/* Card Balance */}
             <div className="text-center mb-6">
               <p className="text-white/70 text-sm mb-1">Card Balance</p>
-              <p className="text-white text-2xl font-bold">0 USD</p>
+              <p className="text-white text-2xl font-bold">{primaryCard.balance || '0.00'} {primaryCard.currency || 'USDT'}</p>
               
               {/* Action Icons */}
               <div className="flex justify-center space-x-8 mt-4">

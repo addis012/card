@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card as CardType, Transaction } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,13 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, Plus, CreditCard, ArrowUpDown, ArrowLeft, DollarSign } from "lucide-react";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Cards() {
   const { user } = useAuth();
   const [showCardDetails, setShowCardDetails] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: cards, isLoading } = useQuery<CardType[]>({
     queryKey: ["/api/cards"],
+  });
+
+  // Get real card transactions from Strowallet
+  const { data: cardTransactions = [] } = useQuery({
+    queryKey: ["/api/cards", primaryCard?.id, "strowallet-transactions"],
+    enabled: !!primaryCard?.id,
   });
 
   const { data: transactions = [] } = useQuery<Transaction[]>({
@@ -21,6 +31,73 @@ export default function Cards() {
   });
 
   const primaryCard = Array.isArray(cards) ? cards[0] : null;
+
+  // Block/Unblock card mutation
+  const blockCardMutation = useMutation({
+    mutationFn: async (blocked: boolean) => {
+      if (!primaryCard?.id) throw new Error("No card selected");
+      return apiRequest(`/api/cards/${primaryCard.id}/block`, {
+        method: "PUT",
+        body: { blocked },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
+      toast({
+        title: primaryCard?.status === 'frozen' ? "Card Unblocked" : "Card Blocked",
+        description: primaryCard?.status === 'frozen' ? "Your card is now active" : "Your card has been blocked for security",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update card status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Fund card mutation
+  const fundCardMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      if (!primaryCard?.id) throw new Error("No card selected");
+      return apiRequest(`/api/cards/${primaryCard.id}/fund`, {
+        method: "POST",
+        body: { amount, currency: "USD" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
+      toast({
+        title: "Card Funded",
+        description: "Your card has been successfully funded",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fund card",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleBlockCard = () => {
+    const isCurrentlyBlocked = primaryCard?.status === 'frozen';
+    blockCardMutation.mutate(!isCurrentlyBlocked);
+  };
+
+  const handleFundCard = () => {
+    const amount = prompt("Enter amount to fund (USD):");
+    if (amount && !isNaN(parseFloat(amount))) {
+      fundCardMutation.mutate(parseFloat(amount));
+    }
+  };
+
+  const handleViewTransactions = () => {
+    // Navigate to transactions page for this specific card
+    window.location.href = `/transactions?cardId=${primaryCard?.id}`;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-800 via-blue-900 to-slate-900 text-white">
@@ -67,10 +144,10 @@ export default function Cards() {
               <div className="mb-6">
                 <div className="flex items-center space-x-4">
                   <div className="bg-yellow-400 w-12 h-8 rounded-md flex items-center justify-center text-black font-bold text-sm">
-                    5561
+                    {primaryCard.cardNumber ? primaryCard.cardNumber.slice(0, 4) : "****"}
                   </div>
                   <p className="text-white text-xl font-mono tracking-wider">
-                    {showCardDetails ? (primaryCard.maskedNumber || "**** **** **** 3966") : "50** **** ****"}
+                    {showCardDetails ? (primaryCard.cardNumber || primaryCard.maskedNumber || "**** **** **** ****") : (primaryCard.maskedNumber || "**** **** **** ****")}
                   </p>
                   <Button
                     variant="ghost"
@@ -83,8 +160,8 @@ export default function Cards() {
                   </Button>
                 </div>
                 <div className="flex justify-between mt-2 text-xs text-white/70">
-                  <span>exp: 10 / 27</span>
-                  <span>50***</span>
+                  <span>exp: {primaryCard.expiryDate || "MM/YY"}</span>
+                  <span>{showCardDetails ? (primaryCard.cvv || "***") : "***"}</span>
                 </div>
               </div>
 
@@ -106,36 +183,60 @@ export default function Cards() {
             {/* Card Balance */}
             <div className="text-center">
               <p className="text-white/70 text-sm mb-1">Card Balance</p>
-              <p className="text-white text-2xl font-bold">0 USD</p>
+              <p className="text-white text-2xl font-bold">{primaryCard.balance || '0.00'} {primaryCard.currency || 'USDT'}</p>
               
               {/* Action Icons */}
-              <div className="flex justify-center space-x-8 mt-4">
-                <div className="flex flex-col items-center">
+              <div className="flex justify-center space-x-6 mt-4">
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center p-2"
+                  onClick={() => setShowCardDetails(!showCardDetails)}
+                >
                   <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
                     <CreditCard className="h-6 w-6 text-white" />
                   </div>
                   <span className="text-white/70 text-xs">Details</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
-                    <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                    </svg>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center p-2"
+                  onClick={() => handleBlockCard()}
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${
+                    primaryCard.status === 'frozen' ? 'bg-red-500' : 'bg-yellow-500'
+                  }`}>
+                    {primaryCard.status === 'frozen' ? (
+                      <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                      </svg>
+                    ) : (
+                      <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                      </svg>
+                    )}
                   </div>
-                  <span className="text-white/70 text-xs">Remove Default</span>
-                </div>
-                <div className="flex flex-col items-center">
+                  <span className="text-white/70 text-xs">{primaryCard.status === 'frozen' ? 'Unblock' : 'Block'}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center p-2"
+                  onClick={() => handleFundCard()}
+                >
                   <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
                     <DollarSign className="h-6 w-6 text-white" />
                   </div>
                   <span className="text-white/70 text-xs">Fund</span>
-                </div>
-                <div className="flex flex-col items-center">
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center p-2"
+                  onClick={() => handleViewTransactions()}
+                >
                   <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-2">
                     <ArrowUpDown className="h-6 w-6 text-white" />
                   </div>
                   <span className="text-white/70 text-xs">Transactions</span>
-                </div>
+                </Button>
               </div>
             </div>
           </div>
@@ -153,7 +254,33 @@ export default function Cards() {
           </div>
           
           <div className="space-y-3">
-            {Array.isArray(transactions) && transactions.slice(0, 5).map((transaction: any) => (
+            {Array.isArray(cardTransactions?.transactions) && cardTransactions.transactions.slice(0, 5).map((transaction: any) => (
+              <div key={transaction.transaction_id} className="flex items-center justify-between bg-slate-700/30 rounded-xl p-4" data-testid={`transaction-${transaction.transaction_id}`}>
+                <div className="flex items-center space-x-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    transaction.transaction_type === 'credit' ? 'bg-green-500' : 'bg-red-500'
+                  }`}>
+                    <DollarSign className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">{transaction.merchant_name || transaction.description}</p>
+                    <p className="text-white/50 text-sm">{transaction.merchant_category || transaction.transaction_type.toUpperCase()}</p>
+                    <p className="text-white/50 text-sm">● {transaction.status}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={`font-semibold ${transaction.transaction_type === 'credit' ? 'text-green-400' : 'text-white'}`}>
+                    {transaction.transaction_type === 'credit' ? '+' : ''}{Math.abs(parseFloat(transaction.amount)).toFixed(2)} {transaction.currency}
+                  </p>
+                  <p className="text-white/50 text-sm">
+                    {new Date(transaction.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            
+            {/* Fallback to regular transactions if no Strowallet transactions */}
+            {(!cardTransactions?.transactions || cardTransactions.transactions.length === 0) && Array.isArray(transactions) && transactions.slice(0, 5).map((transaction: any) => (
               <div key={transaction.id} className="flex items-center justify-between bg-slate-700/30 rounded-xl p-4" data-testid={`transaction-${transaction.id}`}>
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">

@@ -18,7 +18,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all cards for the current user
   app.get("/api/cards", async (req, res) => {
     try {
-      const cards = await storage.getCardsByUserId(DEFAULT_USER_ID);
+      // Use authenticated user ID from session, fallback to query param, then default
+      const userId = req.session?.user?.id || req.query.userId as string || DEFAULT_USER_ID;
+      const cards = await storage.getCardsByUserId(userId);
       res.json(cards);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch cards" });

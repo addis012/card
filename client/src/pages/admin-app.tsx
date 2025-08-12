@@ -26,6 +26,13 @@ function AdminRoutes() {
     <Switch>
       <Route path="/admin" component={AdminPanel} />
       <Route path="/admin/dashboard" component={AdminPanel} />
+      <Route path="/admin/cards" component={AdminPanel} />
+      <Route path="/admin/add-money" component={AdminPanel} />
+      <Route path="/admin/my-cards" component={AdminPanel} />
+      <Route path="/admin/transactions" component={AdminPanel} />
+      <Route path="/admin/users" component={AdminPanel} />
+      <Route path="/admin/kyc" component={AdminPanel} />
+      <Route path="/admin/settings" component={AdminPanel} />
       <Route component={NotFound} />
     </Switch>
   );

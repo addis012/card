@@ -10,7 +10,7 @@ import Transactions from "@/pages/transactions";
 import ApiSettings from "@/pages/api-settings";
 import Register from "@/pages/register";
 import Login from "@/pages/login";
-import AdminPanel from "@/pages/admin";
+import AdminApp from "@/pages/admin-app";
 import Deposits from "@/pages/deposits";
 import CardAddress from "@/pages/card-address";
 import Profile from "@/pages/profile";
@@ -25,9 +25,9 @@ function AuthenticatedRoutes() {
 
   return (
     <Switch>
-      {/* Admin routes - render with admin sidebar only */}
-      <Route path="/admin">
-        <AdminPanel />
+      {/* Admin routes - completely separate admin system */}
+      <Route path="/admin" nest>
+        <AdminApp />
       </Route>
       
       {/* Regular user routes - render with user sidebar */}

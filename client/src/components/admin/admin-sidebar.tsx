@@ -7,8 +7,11 @@ import {
   FileText,
   Settings,
   TrendingUp,
-  Wallet
+  Wallet,
+  LogOut
 } from "lucide-react";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -23,22 +26,27 @@ const navigation = [
 
 export default function AdminSidebar() {
   const [location] = useLocation();
+  const { admin, logout } = useAdminAuth();
+
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
-    <div className="w-64 bg-slate-900 text-white min-h-screen p-4">
+    <div className="w-64 bg-slate-900 text-white min-h-screen p-4 flex flex-col">
       <div className="mb-8">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
             <CreditCard className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">ZemaCard</h1>
+            <h1 className="text-xl font-bold">CardFlow Pro</h1>
             <p className="text-sm text-slate-400">Admin Panel</p>
           </div>
         </div>
       </div>
 
-      <nav className="space-y-2">
+      <nav className="space-y-2 flex-1">
         {navigation.map((item) => {
           const Icon = item.icon;
           const isActive = location === item.href;
@@ -51,7 +59,7 @@ export default function AdminSidebar() {
                   ? 'bg-blue-600 text-white' 
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }
-              `}>
+              `} data-testid={`link-admin-${item.name.toLowerCase().replace(/\s+/g, '-')}`}>
                 <Icon className="h-5 w-5" />
                 <span>{item.name}</span>
               </a>
@@ -60,12 +68,25 @@ export default function AdminSidebar() {
         })}
       </nav>
 
-      <div className="mt-8 p-4 bg-slate-800 rounded-lg">
-        <div className="text-sm">
-          <p className="text-slate-400">Welcome Back,</p>
-          <p className="font-medium">Addisu Asfmau</p>
-          <p className="text-xs text-slate-500 mt-1">Admin</p>
+      {/* Admin User Info & Logout */}
+      <div className="mt-auto space-y-4">
+        <div className="p-4 bg-slate-800 rounded-lg">
+          <div className="text-sm">
+            <p className="text-slate-400">Logged in as</p>
+            <p className="font-medium">{admin?.firstName} {admin?.lastName}</p>
+            <p className="text-xs text-slate-500 mt-1">{admin?.role || 'Admin'}</p>
+          </div>
         </div>
+        
+        <Button
+          onClick={handleLogout}
+          variant="outline"
+          className="w-full text-slate-300 border-slate-600 hover:bg-slate-800 hover:text-white"
+          data-testid="button-admin-logout"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
       </div>
     </div>
   );

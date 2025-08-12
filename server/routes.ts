@@ -813,6 +813,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ ADMIN AUTHENTICATION ROUTES ============
+  
+  // Admin login endpoint
+  app.post("/api/admin/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      // Find admin user - only allow users with admin role
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.role !== 'admin') {
+        return res.status(401).json({ message: "Invalid admin credentials" });
+      }
+      
+      // Verify password
+      const isValid = await bcrypt.compare(password, user.password);
+      
+      if (!isValid) {
+        return res.status(401).json({ message: "Invalid admin credentials" });
+      }
+      
+      // Store admin session (separate from user session)
+      if (req.session) {
+        req.session.admin = {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        };
+      }
+      
+      const { password: _, ...adminResponse } = user;
+      res.json({ message: "Admin login successful", admin: adminResponse });
+    } catch (error) {
+      console.error("Error during admin login:", error);
+      res.status(500).json({ message: "Admin login failed" });
+    }
+  });
+
+  // Get current admin
+  app.get("/api/admin/auth/me", async (req, res) => {
+    if (req.session?.admin) {
+      res.json(req.session.admin);
+    } else {
+      res.status(401).json({ message: "Not authenticated as admin" });
+    }
+  });
+
+  // Admin logout endpoint
+  app.post("/api/admin/auth/logout", async (req, res) => {
+    if (req.session?.admin) {
+      delete req.session.admin;
+    }
+    res.json({ message: "Admin logged out successfully" });
+  });
+
+  // Admin middleware to protect admin routes
+  const requireAdmin = (req: any, res: any, next: any) => {
+    if (!req.session?.admin) {
+      return res.status(401).json({ message: "Admin authentication required" });
+    }
+    next();
+  };
+
+  // Create initial admin user endpoint (for setup)
+  app.post("/api/admin/setup", async (req, res) => {
+    try {
+      const { username, password, email, firstName, lastName } = req.body;
+      
+      if (!username || !password || !email) {
+        return res.status(400).json({ message: "Username, password, and email are required" });
+      }
+      
+      // Check if admin already exists
+      const existingAdmin = await storage.getUserByUsername(username);
+      if (existingAdmin) {
+        return res.status(400).json({ message: "Admin user already exists" });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create admin user
+      const adminUser = await storage.createUser({
+        username,
+        password: hashedPassword,
+        email,
+        firstName: firstName || "Admin",
+        lastName: lastName || "User",
+        role: "admin"
+      });
+      
+      const { password: _, ...adminResponse } = adminUser;
+      res.status(201).json({ message: "Admin user created successfully", admin: adminResponse });
+    } catch (error) {
+      console.error("Error creating admin user:", error);
+      res.status(500).json({ message: "Failed to create admin user" });
+    }
+  });
+
   // Card address management endpoints
   app.get("/api/cards/:id/address", async (req, res) => {
     try {

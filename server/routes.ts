@@ -129,6 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "pending",
         balance: "0.00",
         spendingLimit: spendingLimit || 1000,
+        currency: "USDT",
       });
 
       // Update with Strowallet ID and masked number
@@ -612,6 +613,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create an admin user for testing
+  app.post("/api/admin/create-test-user", async (req, res) => {
+    try {
+      // Create admin user with known password
+      const hashedPassword = await bcrypt.hash("admin123", 10);
+      const adminUser = await storage.createUser({
+        username: "admin",
+        email: "admin@cardflow.com",
+        firstName: "Admin",
+        lastName: "User",
+        password: hashedPassword,
+        role: "admin"
+      });
+      
+      const { password, ...userResponse } = adminUser;
+      res.json({ message: "Test admin user created", user: userResponse });
+    } catch (error) {
+      console.error("Error creating test user:", error);
+      res.status(500).json({ message: "Failed to create test user" });
+    }
+  });
+
 
 
   // KYC Document Routes
@@ -678,7 +701,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Username already exists" });
       }
       
-      const user = await storage.createUser(validatedData);
+      // Check if email already exists
+      const existingEmail = await storage.getUserByEmail(validatedData.email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      
+      // Hash password before storing
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      const userDataWithHashedPassword = {
+        ...validatedData,
+        password: hashedPassword
+      };
+      
+      const user = await storage.createUser(userDataWithHashedPassword);
       
       // Return user data without password for frontend
       const { password, ...userResponse } = user;
@@ -709,6 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify password
       const isValid = await bcrypt.compare(password, user.password);
+      
       if (!isValid) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
@@ -885,6 +922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "pending",
         balance: "0.00",
         spendingLimit: spendingLimit?.toString() || "1000.00",
+        currency: "USDT",
         // strowalletCardId: strowalletCard.card_id, // Not supported in schema
         billingAddress: billingAddress || null,
         billingCity: billingCity || null,

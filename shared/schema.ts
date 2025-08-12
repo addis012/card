@@ -201,6 +201,7 @@ export const insertUserSchema = z.object({
 export const insertCardSchema = z.object({
   userId: z.string().min(1),
   cardType: z.enum(['virtual', 'physical']).default('virtual'),
+  status: z.enum(['pending', 'active', 'frozen', 'cancelled']).optional(),
   spendingLimit: z.string().default('1000.00'),
   currency: z.string().default('USDT'),
   cardNumber: z.string().optional(),

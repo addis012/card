@@ -27,18 +27,21 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<UserPlain | undefined>;
   getUserByUsername(username: string): Promise<UserPlain | undefined>;
   getUserById(id: string): Promise<UserPlain | undefined>;
+  getUser(id: string): Promise<UserPlain | undefined>; // Alias for getUserById
   updateUser(id: string, updates: Partial<UserPlain>): Promise<UserPlain | undefined>;
 
   // Card methods
   createCard(insertCard: InsertCard): Promise<CardPlain>;
   getCardsByUserId(userId: string): Promise<CardPlain[]>;
   getCardById(id: string): Promise<CardPlain | undefined>;
+  getCard(id: string): Promise<CardPlain | undefined>; // Alias for getCardById
   updateCard(id: string, updates: Partial<CardPlain>): Promise<CardPlain | undefined>;
   deleteCard(id: string): Promise<boolean>;
 
   // Transaction methods
   createTransaction(insertTransaction: InsertTransaction): Promise<TransactionPlain>;
   getTransactionsByUserId(userId: string): Promise<TransactionPlain[]>;
+  getTransactionsByCardId(cardId: string): Promise<TransactionPlain[]>;
   getTransactionById(id: string): Promise<TransactionPlain | undefined>;
   
   // API Key methods
@@ -96,6 +99,10 @@ export class MongoStorage implements IStorage {
     return user ? this.toPlain<UserPlain>(user) : undefined;
   }
 
+  async getUser(id: string): Promise<UserPlain | undefined> {
+    return this.getUserById(id);
+  }
+
   async updateUser(id: string, updates: Partial<UserPlain>): Promise<UserPlain | undefined> {
     const user = await UserModel.findByIdAndUpdate(id, updates, { new: true });
     return user ? this.toPlain<UserPlain>(user) : undefined;
@@ -116,6 +123,10 @@ export class MongoStorage implements IStorage {
   async getCardById(id: string): Promise<CardPlain | undefined> {
     const card = await CardModel.findById(id);
     return card ? this.toPlain<CardPlain>(card) : undefined;
+  }
+
+  async getCard(id: string): Promise<CardPlain | undefined> {
+    return this.getCardById(id);
   }
 
   async updateCard(id: string, updates: Partial<CardPlain>): Promise<CardPlain | undefined> {
@@ -146,6 +157,11 @@ export class MongoStorage implements IStorage {
   async getTransactionById(id: string): Promise<TransactionPlain | undefined> {
     const transaction = await TransactionModel.findById(id);
     return transaction ? this.toPlain<TransactionPlain>(transaction) : undefined;
+  }
+
+  async getTransactionsByCardId(cardId: string): Promise<TransactionPlain[]> {
+    const transactions = await TransactionModel.find({ cardId });
+    return transactions.map(tx => this.toPlain<TransactionPlain>(tx));
   }
 
   // API Key methods

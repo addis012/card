@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import AdminSidebar from "@/components/admin/admin-sidebar";
 import { 
   Shield, 
   DollarSign, 
@@ -112,8 +113,10 @@ export default function AdminPanel() {
   const pendingKyc = kycDocuments.filter((k: KycDocument) => k.status === 'pending').length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+      <AdminSidebar />
+      <div className="flex-1 p-6">
+        <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Shield className="w-8 h-8 text-blue-600" />
@@ -569,6 +572,7 @@ export default function AdminPanel() {
             </Card>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

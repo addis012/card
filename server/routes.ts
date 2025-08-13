@@ -744,7 +744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: latestTx.currency?.toUpperCase() || "USD",
           status: "active",
           transaction_count: transactions.length,
-          recent_transactions: transactions.slice(0, 5).map(tx => ({
+          recent_transactions: transactions.slice(0, 5).map((tx: any) => ({
             id: tx.id,
             amount: tx.amount,
             type: tx.type,
@@ -780,7 +780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create card record in our system
       const card = await storage.createCard({
-        userId: "system", // We'll need to associate with a real user later
+        userId: DEFAULT_USER_ID, // Use the default user ID for imported cards
         strowalletCardId: card_id,
         balance: balance || "0.00",
         spendingLimit: "1000.00",

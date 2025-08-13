@@ -270,6 +270,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create card directly with Strowallet for customer ID
+  app.post("/api/create-card-direct", async (req, res) => {
+    try {
+      const { customerId, customerName, customerEmail, amount = 100 } = req.body;
+      
+      if (!customerId || !customerName) {
+        return res.status(400).json({ 
+          message: "customerId and customerName are required" 
+        });
+      }
+
+      console.log("Creating card for:", { customerId, customerName, customerEmail, amount });
+
+      // Try to create card via Strowallet API
+      try {
+        const response = await fetch('https://strowallet.com/api/bitvcard/create-card', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.STROWALLET_SECRET_KEY}`,
+            'X-Public-Key': process.env.STROWALLET_PUBLIC_KEY || "",
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customer_id: customerId,
+            customer_name: customerName,
+            customerEmail: customerEmail || `${customerName.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+            amount: amount,
+            public_key: process.env.STROWALLET_PUBLIC_KEY,
+            card_type: 'virtual'
+          })
+        });
+
+        const strowalletResult = await response.text();
+        let strowalletData;
+        
+        try {
+          strowalletData = JSON.parse(strowalletResult);
+        } catch {
+          strowalletData = { error: "Non-JSON response", response: strowalletResult.substring(0, 500) };
+        }
+
+        console.log("Strowallet response:", { status: response.status, data: strowalletData });
+
+        if (response.ok && strowalletData.success !== false) {
+          // Success - store in database
+          const card = await storage.createCard({
+            userId: DEFAULT_USER_ID,
+            cardNumber: strowalletData.card_number || "****-****-****-0000",
+            expiryDate: strowalletData.expiry_date || "12/28",
+            cvv: strowalletData.cvv || "123",
+            cardType: "virtual",
+            status: "active",
+            balance: strowalletData.balance || "0.00",
+            strowalletCardId: strowalletData.card_id,
+            spendingLimit: amount,
+            currency: "USDT"
+          });
+
+          return res.status(201).json({
+            success: true,
+            message: "Card created successfully",
+            card: card,
+            strowalletData: strowalletData
+          });
+        } else {
+          // Failed - return error details
+          return res.status(response.status || 400).json({
+            success: false,
+            message: "Strowallet API error",
+            error: strowalletData,
+            httpStatus: response.status
+          });
+        }
+      } catch (error) {
+        console.error("Strowallet request failed:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to connect to Strowallet API",
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    } catch (error) {
+      console.error("Error in create-card-direct:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Internal server error",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Debug endpoint to check real Strowallet data
   app.get("/api/debug/strowallet", async (req, res) => {
     try {

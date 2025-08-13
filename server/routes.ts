@@ -270,6 +270,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to check real Strowallet data
+  app.get("/api/debug/strowallet", async (req, res) => {
+    try {
+      // Test various endpoints to find working ones
+      const strowalletService = new StrowalletService();
+      
+      const testEndpoints = [
+        "/api/bitvcard/fetch-card-detail/",
+        "/api/bitvcard/card-transactions/",
+        "/api/bitvcard/account-balance",
+        "/api/bitvcard/list-cards",
+        "/api/v1/cards",
+        "/api/v1/transactions",
+        "/bitvcard/cards",
+        "/bitvcard/transactions"
+      ];
+      
+      const results: Record<string, any> = {};
+      
+      for (const endpoint of testEndpoints) {
+        try {
+          const response = await fetch(`https://strowallet.com${endpoint}`, {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${process.env.STROWALLET_SECRET_KEY}`,
+              "X-Public-Key": process.env.STROWALLET_PUBLIC_KEY || "",
+              "Content-Type": "application/json",
+            },
+          });
+          
+          const text = await response.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = text.substring(0, 500) + (text.length > 500 ? "..." : "");
+          }
+          
+          results[endpoint] = {
+            status: response.status,
+            data: data
+          };
+        } catch (error) {
+          results[endpoint] = {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          };
+        }
+      }
+      
+      res.json({
+        message: "Strowallet API endpoint test results",
+        credentials: {
+          hasPublicKey: !!process.env.STROWALLET_PUBLIC_KEY,
+          hasSecretKey: !!process.env.STROWALLET_SECRET_KEY,
+          publicKeyPrefix: process.env.STROWALLET_PUBLIC_KEY?.substring(0, 10) + "..."
+        },
+        results
+      });
+    } catch (error) {
+      console.error("Error testing Strowallet endpoints:", error);
+      res.status(500).json({ 
+        message: "Failed to test Strowallet endpoints",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // User Registration (using the enhanced version below)
   // Registration endpoint removed - using the enhanced version below
 

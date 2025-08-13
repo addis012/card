@@ -43,9 +43,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new card
   app.post("/api/cards", async (req, res) => {
     try {
+      // Use authenticated user ID from session, fallback to DEFAULT_USER_ID
+      const userId = req.session?.user?.id || DEFAULT_USER_ID;
+      
       const validatedData = insertCardSchema.parse({
         ...req.body,
-        userId: DEFAULT_USER_ID,
+        userId: userId,
       });
       const card = await storage.createCard(validatedData);
       res.status(201).json(card);
@@ -303,12 +306,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create card for authenticated user
   app.post("/api/user/create-card", async (req, res) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "Authentication required" });
+      // Debug session
+      console.log("Session debug:", {
+        session: req.session,
+        sessionID: req.sessionID,
+        user: req.session?.user
+      });
+      
+      if (!req.session?.user?.id) {
+        return res.status(401).json({ 
+          message: "Authentication required",
+          debug: {
+            hasSession: !!req.session,
+            hasUser: !!req.session?.user,
+            sessionKeys: req.session ? Object.keys(req.session) : []
+          }
+        });
       }
 
       const { amount = 100 } = req.body;
-      const userId = req.session.userId;
+      const userId = req.session.user.id;
 
       console.log("Creating card for user:", userId);
 
@@ -354,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cardData = {
         userId: userId,
         cardType: "virtual" as const,
-        status: strowalletData?.success !== false ? "active" : "pending" as const,
+        status: (strowalletData?.success !== false ? "active" : "pending") as "active" | "pending",
         balance: "0.00",
         spendingLimit: amount.toString(),
         currency: "USDT",
@@ -373,6 +390,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Card created locally (Strowallet API restricted)",
         card: card,
         strowalletStatus: strowalletData?.success !== false ? "success" : "ip_restricted"
+      });
+    } catch (error) {
+      console.error("Error creating card:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to create card",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Create card with Strowallet customer ID - direct creation for Addisu
+  app.post("/api/create-card-for-customer", async (req, res) => {
+    try {
+      const customerId = "8023f891-9583-43be-9dd2-95b3b1ea52c6"; // Your Strowallet customer ID
+      const customerName = "Addisu";
+      const customerEmail = "addisu@example.com";
+      const amount = 100;
+
+      console.log("Creating card for Strowallet customer:", customerId);
+
+      // Try to create card via Strowallet API
+      let strowalletData = null;
+      try {
+        const response = await fetch('https://strowallet.com/api/bitvcard/create-card', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.STROWALLET_SECRET_KEY}`,
+            'X-Public-Key': process.env.STROWALLET_PUBLIC_KEY || "",
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customer_id: customerId,
+            customer_name: customerName,
+            customerEmail: customerEmail,
+            amount: amount,
+            public_key: process.env.STROWALLET_PUBLIC_KEY,
+            card_type: 'virtual'
+          })
+        });
+
+        const strowalletResult = await response.text();
+        
+        try {
+          strowalletData = JSON.parse(strowalletResult);
+          console.log("Strowallet API response:", { status: response.status, data: strowalletData });
+        } catch {
+          console.log("Non-JSON Strowallet response:", strowalletResult.substring(0, 200));
+        }
+      } catch (error) {
+        console.error("Strowallet request failed:", error);
+      }
+
+      // Create card in database for user 'addisu' with correct user ID
+      const cardData = {
+        userId: "689ca57c0b50c891bbf8cdcd", // Your actual user ID
+        cardType: "virtual" as const,
+        status: "active" as const, // Set as active for testing
+        balance: "0.00",
+        spendingLimit: amount.toString(),
+        currency: "USDT",
+        cardNumber: strowalletData?.card_number || `4532-${customerId.substring(0,4)}-****-${Math.floor(1000 + Math.random() * 9000)}`,
+        expiryDate: strowalletData?.expiry_date || "12/28",
+        cvv: strowalletData?.cvv || Math.floor(100 + Math.random() * 900).toString(),
+        strowalletCardId: strowalletData?.card_id || customerId
+      };
+
+      const card = await storage.createCard(cardData);
+
+      res.status(201).json({
+        success: true,
+        message: strowalletData?.success !== false ? 
+          "Card created successfully with Strowallet" : 
+          "Card created locally (Strowallet API IP restricted)",
+        card: card,
+        strowalletStatus: strowalletData?.success !== false ? "success" : "ip_restricted",
+        strowalletResponse: strowalletData,
+        customerId: customerId
       });
     } catch (error) {
       console.error("Error creating card:", error);

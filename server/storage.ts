@@ -1,257 +1,326 @@
-import {
-  UserModel,
-  CardModel,
-  TransactionModel,
-  ApiKeyModel,
-  DepositModel,
-  KycDocumentModel,
-  type UserPlain,
-  type CardPlain,
-  type TransactionPlain,
-  type ApiKeyPlain,
-  type DepositPlain,
-  type KycDocumentPlain,
-  type InsertUser,
-  type InsertCard,
-  type InsertTransaction,
-  type InsertApiKey,
-  type InsertDeposit,
-  type InsertKycDocument,
+import type {
+  User,
+  Card,
+  Transaction,
+  ApiKey,
+  Deposit,
+  KycDocument,
+  InsertUser,
+  InsertCard,
+  InsertTransaction,
+  InsertApiKey,
+  InsertDeposit,
+  InsertKycDocument,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// Storage interface for MongoDB
 export interface IStorage {
   // User methods
-  createUser(insertUser: InsertUser): Promise<UserPlain>;
-  getUserByEmail(email: string): Promise<UserPlain | undefined>;
-  getUserByUsername(username: string): Promise<UserPlain | undefined>;
-  getUserById(id: string): Promise<UserPlain | undefined>;
-  getUser(id: string): Promise<UserPlain | undefined>; // Alias for getUserById
-  updateUser(id: string, updates: Partial<UserPlain>): Promise<UserPlain | undefined>;
+  createUser(insertUser: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>; // Alias for getUserById
+  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   deleteUserByUsername(username: string): Promise<boolean>;
 
   // Card methods
-  createCard(insertCard: InsertCard): Promise<CardPlain>;
-  getCardsByUserId(userId: string): Promise<CardPlain[]>;
-  getAllCards(): Promise<CardPlain[]>;
-  getCardById(id: string): Promise<CardPlain | undefined>;
-  getCard(id: string): Promise<CardPlain | undefined>; // Alias for getCardById
-  updateCard(id: string, updates: Partial<CardPlain>): Promise<CardPlain | undefined>;
+  createCard(insertCard: InsertCard): Promise<Card>;
+  getCardsByUserId(userId: string): Promise<Card[]>;
+  getAllCards(): Promise<Card[]>;
+  getCardById(id: string): Promise<Card | undefined>;
+  getCard(id: string): Promise<Card | undefined>; // Alias for getCardById
+  updateCard(id: string, updates: Partial<Card>): Promise<Card | undefined>;
   deleteCard(id: string): Promise<boolean>;
 
   // Transaction methods
-  createTransaction(insertTransaction: InsertTransaction): Promise<TransactionPlain>;
-  getTransactionsByUserId(userId: string): Promise<TransactionPlain[]>;
-  getTransactionsByCardId(cardId: string): Promise<TransactionPlain[]>;
-  getTransactionById(id: string): Promise<TransactionPlain | undefined>;
+  createTransaction(insertTransaction: InsertTransaction): Promise<Transaction>;
+  getTransactionsByUserId(userId: string): Promise<Transaction[]>;
+  getTransactionsByCardId(cardId: string): Promise<Transaction[]>;
+  getTransactionById(id: string): Promise<Transaction | undefined>;
   
   // API Key methods
-  createApiKey(insertApiKey: InsertApiKey): Promise<ApiKeyPlain>;
-  getApiKeysByUserId(userId: string): Promise<ApiKeyPlain[]>;
-  updateApiKey(id: string, updates: Partial<ApiKeyPlain>): Promise<ApiKeyPlain | undefined>;
+  createApiKey(insertApiKey: InsertApiKey): Promise<ApiKey>;
+  getApiKeysByUserId(userId: string): Promise<ApiKey[]>;
+  updateApiKey(id: string, updates: Partial<ApiKey>): Promise<ApiKey | undefined>;
   deleteApiKey(id: string): Promise<boolean>;
 
   // Deposit methods
-  createDeposit(insertDeposit: InsertDeposit): Promise<DepositPlain>;
-  getDepositsByUserId(userId: string): Promise<DepositPlain[]>;
-  getAllDeposits(): Promise<DepositPlain[]>;
-  updateDeposit(id: string, updates: Partial<DepositPlain>): Promise<DepositPlain | undefined>;
+  createDeposit(insertDeposit: InsertDeposit): Promise<Deposit>;
+  getDepositsByUserId(userId: string): Promise<Deposit[]>;
+  getAllDeposits(): Promise<Deposit[]>;
+  updateDeposit(id: string, updates: Partial<Deposit>): Promise<Deposit | undefined>;
 
   // KYC Document methods
-  createKycDocument(insertKycDocument: InsertKycDocument): Promise<KycDocumentPlain>;
-  getKycDocumentsByUserId(userId: string): Promise<KycDocumentPlain[]>;
-  getAllKycDocuments(): Promise<KycDocumentPlain[]>;
-  updateKycDocument(id: string, updates: Partial<KycDocumentPlain>): Promise<KycDocumentPlain | undefined>;
+  createKycDocument(insertKycDocument: InsertKycDocument): Promise<KycDocument>;
+  getKycDocumentsByUserId(userId: string): Promise<KycDocument[]>;
+  getAllKycDocuments(): Promise<KycDocument[]>;
+  updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined>;
 }
 
-// MongoDB Storage Implementation
-export class MongoStorage implements IStorage {
-  // Helper method to convert MongoDB document to plain object
-  private toPlain<T>(doc: any): T {
-    if (!doc) return doc;
-    const plain = doc.toObject ? doc.toObject() : doc;
-    if (plain._id) {
-      plain.id = plain._id.toString();
-      delete plain._id;
-      delete plain.__v;
-    }
-    return plain;
+export class MemStorage implements IStorage {
+  private users: Map<string, User> = new Map();
+  private cards: Map<string, Card> = new Map();
+  private transactions: Map<string, Transaction> = new Map();
+  private apiKeys: Map<string, ApiKey> = new Map();
+  private deposits: Map<string, Deposit> = new Map();
+  private kycDocuments: Map<string, KycDocument> = new Map();
+
+  constructor() {
+    // Initialize with admin user
+    this.initializeAdmin();
+  }
+
+  private initializeAdmin() {
+    const adminId = randomUUID();
+    const admin: User = {
+      id: adminId,
+      username: "administrator",
+      password: "$2b$10$3n8iT0PZ1tXb8YxF.kGhCeLdDv6QTMVkww2OQwjd8Z2KmKzK1eO.m", // admin123
+      email: "admin@cardflow.com",
+      firstName: "System",
+      lastName: "Administrator",
+      phone: null,
+      role: "admin",
+      kycStatus: "approved",
+      kycDocuments: null,
+      createdAt: new Date(),
+    };
+    this.users.set(adminId, admin);
   }
 
   // User methods
-  async createUser(insertUser: InsertUser): Promise<UserPlain> {
-    const user = new UserModel(insertUser);
-    const savedUser = await user.save();
-    return this.toPlain<UserPlain>(savedUser);
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = randomUUID();
+    const user: User = {
+      id,
+      ...insertUser,
+      phone: insertUser.phone || null,
+      kycDocuments: insertUser.kycDocuments || null,
+      createdAt: new Date(),
+    };
+    this.users.set(id, user);
+    return user;
   }
 
-  async getUserByEmail(email: string): Promise<UserPlain | undefined> {
-    const user = await UserModel.findOne({ email });
-    return user ? this.toPlain<UserPlain>(user) : undefined;
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.email === email);
   }
 
-  async getUserByUsername(username: string): Promise<UserPlain | undefined> {
-    const user = await UserModel.findOne({ username });
-    return user ? this.toPlain<UserPlain>(user) : undefined;
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.username === username);
   }
 
-  async getUserById(id: string): Promise<UserPlain | undefined> {
-    const user = await UserModel.findById(id);
-    return user ? this.toPlain<UserPlain>(user) : undefined;
+  async getUserById(id: string): Promise<User | undefined> {
+    return this.users.get(id);
   }
 
-  async getUser(id: string): Promise<UserPlain | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     return this.getUserById(id);
   }
 
-  async updateUser(id: string, updates: Partial<UserPlain>): Promise<UserPlain | undefined> {
-    const user = await UserModel.findByIdAndUpdate(id, updates, { new: true });
-    return user ? this.toPlain<UserPlain>(user) : undefined;
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    
+    const updatedUser = { ...user, ...updates };
+    this.users.set(id, updatedUser);
+    return updatedUser;
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const result = await UserModel.findByIdAndDelete(id);
-    return !!result;
+    return this.users.delete(id);
   }
 
   async deleteUserByUsername(username: string): Promise<boolean> {
-    const result = await UserModel.findOneAndDelete({ username });
-    return !!result;
+    const user = Array.from(this.users.entries()).find(([_, u]) => u.username === username);
+    if (!user) return false;
+    
+    return this.users.delete(user[0]);
   }
 
   // Card methods
-  async createCard(insertCard: InsertCard): Promise<CardPlain> {
-    const card = new CardModel(insertCard);
-    const savedCard = await card.save();
-    return this.toPlain<CardPlain>(savedCard);
+  async createCard(insertCard: InsertCard): Promise<Card> {
+    const id = randomUUID();
+    const card: Card = {
+      id,
+      ...insertCard,
+      cardNumber: insertCard.cardNumber || null,
+      maskedNumber: insertCard.maskedNumber || null,
+      expiryDate: insertCard.expiryDate || null,
+      cvv: insertCard.cvv || null,
+      strowalletCardId: insertCard.strowalletCardId || null,
+      billingAddress: insertCard.billingAddress || null,
+      billingCity: insertCard.billingCity || null,
+      billingState: insertCard.billingState || null,
+      billingZip: insertCard.billingZip || null,
+      billingCountry: insertCard.billingCountry || null,
+      nameOnCard: insertCard.nameOnCard || null,
+      approvedAt: insertCard.approvedAt || null,
+      createdAt: new Date(),
+    };
+    this.cards.set(id, card);
+    return card;
   }
 
-  async getCardsByUserId(userId: string): Promise<CardPlain[]> {
-    const cards = await CardModel.find({ userId });
-    return cards.map(card => this.toPlain<CardPlain>(card));
+  async getCardsByUserId(userId: string): Promise<Card[]> {
+    return Array.from(this.cards.values()).filter(card => card.userId === userId);
   }
 
-  async getAllCards(): Promise<CardPlain[]> {
-    const cards = await CardModel.find();
-    return cards.map(card => this.toPlain<CardPlain>(card));
+  async getAllCards(): Promise<Card[]> {
+    return Array.from(this.cards.values());
   }
 
-  async getCardById(id: string): Promise<CardPlain | undefined> {
-    const card = await CardModel.findById(id);
-    return card ? this.toPlain<CardPlain>(card) : undefined;
+  async getCardById(id: string): Promise<Card | undefined> {
+    return this.cards.get(id);
   }
 
-  async getCard(id: string): Promise<CardPlain | undefined> {
+  async getCard(id: string): Promise<Card | undefined> {
     return this.getCardById(id);
   }
 
-  async updateCard(id: string, updates: Partial<CardPlain>): Promise<CardPlain | undefined> {
-    const card = await CardModel.findByIdAndUpdate(id, updates, { new: true });
-    return card ? this.toPlain<CardPlain>(card) : undefined;
+  async updateCard(id: string, updates: Partial<Card>): Promise<Card | undefined> {
+    const card = this.cards.get(id);
+    if (!card) return undefined;
+    
+    const updatedCard = { ...card, ...updates };
+    this.cards.set(id, updatedCard);
+    return updatedCard;
   }
 
   async deleteCard(id: string): Promise<boolean> {
-    const result = await CardModel.findByIdAndDelete(id);
-    return !!result;
+    return this.cards.delete(id);
   }
 
   // Transaction methods
-  async createTransaction(insertTransaction: InsertTransaction): Promise<TransactionPlain> {
-    const transaction = new TransactionModel(insertTransaction);
-    const savedTransaction = await transaction.save();
-    return this.toPlain<TransactionPlain>(savedTransaction);
+  async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
+    const id = randomUUID();
+    const transaction: Transaction = {
+      id,
+      ...insertTransaction,
+      description: insertTransaction.description || null,
+      transactionReference: insertTransaction.transactionReference || null,
+      createdAt: new Date(),
+    };
+    this.transactions.set(id, transaction);
+    return transaction;
   }
 
-  async getTransactionsByUserId(userId: string): Promise<TransactionPlain[]> {
-    // Get user's cards first, then get transactions for those cards
-    const cards = await CardModel.find({ userId });
-    const cardIds = cards.map(card => card._id.toString());
-    const transactions = await TransactionModel.find({ cardId: { $in: cardIds } });
-    return transactions.map(tx => this.toPlain<TransactionPlain>(tx));
+  async getTransactionsByUserId(userId: string): Promise<Transaction[]> {
+    const userCards = await this.getCardsByUserId(userId);
+    const cardIds = userCards.map(card => card.id);
+    return Array.from(this.transactions.values()).filter(transaction => 
+      cardIds.includes(transaction.cardId)
+    );
   }
 
-  async getTransactionById(id: string): Promise<TransactionPlain | undefined> {
-    const transaction = await TransactionModel.findById(id);
-    return transaction ? this.toPlain<TransactionPlain>(transaction) : undefined;
+  async getTransactionsByCardId(cardId: string): Promise<Transaction[]> {
+    return Array.from(this.transactions.values()).filter(transaction => transaction.cardId === cardId);
   }
 
-  async getTransactionsByCardId(cardId: string): Promise<TransactionPlain[]> {
-    const transactions = await TransactionModel.find({ cardId });
-    return transactions.map(tx => this.toPlain<TransactionPlain>(tx));
+  async getTransactionById(id: string): Promise<Transaction | undefined> {
+    return this.transactions.get(id);
   }
 
   // API Key methods
-  async createApiKey(insertApiKey: InsertApiKey): Promise<ApiKeyPlain> {
-    const apiKeyData = {
+  async createApiKey(insertApiKey: InsertApiKey): Promise<ApiKey> {
+    const id = randomUUID();
+    const key = randomUUID();
+    const apiKey: ApiKey = {
+      id,
+      key,
       ...insertApiKey,
-      key: `ak_${randomUUID().replace(/-/g, '')}`,
+      lastUsed: insertApiKey.lastUsed || null,
+      createdAt: new Date(),
     };
-    const apiKey = new ApiKeyModel(apiKeyData);
-    const savedApiKey = await apiKey.save();
-    return this.toPlain<ApiKeyPlain>(savedApiKey);
+    this.apiKeys.set(id, apiKey);
+    return apiKey;
   }
 
-  async getApiKeysByUserId(userId: string): Promise<ApiKeyPlain[]> {
-    const apiKeys = await ApiKeyModel.find({ userId });
-    return apiKeys.map(key => this.toPlain<ApiKeyPlain>(key));
+  async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
+    return Array.from(this.apiKeys.values()).filter(apiKey => apiKey.userId === userId);
   }
 
-  async updateApiKey(id: string, updates: Partial<ApiKeyPlain>): Promise<ApiKeyPlain | undefined> {
-    const apiKey = await ApiKeyModel.findByIdAndUpdate(id, updates, { new: true });
-    return apiKey ? this.toPlain<ApiKeyPlain>(apiKey) : undefined;
+  async updateApiKey(id: string, updates: Partial<ApiKey>): Promise<ApiKey | undefined> {
+    const apiKey = this.apiKeys.get(id);
+    if (!apiKey) return undefined;
+    
+    const updatedApiKey = { ...apiKey, ...updates };
+    this.apiKeys.set(id, updatedApiKey);
+    return updatedApiKey;
   }
 
   async deleteApiKey(id: string): Promise<boolean> {
-    const result = await ApiKeyModel.findByIdAndDelete(id);
-    return !!result;
+    return this.apiKeys.delete(id);
   }
 
   // Deposit methods
-  async createDeposit(insertDeposit: InsertDeposit): Promise<DepositPlain> {
-    const deposit = new DepositModel(insertDeposit);
-    const savedDeposit = await deposit.save();
-    return this.toPlain<DepositPlain>(savedDeposit);
+  async createDeposit(insertDeposit: InsertDeposit): Promise<Deposit> {
+    const id = randomUUID();
+    const deposit: Deposit = {
+      id,
+      ...insertDeposit,
+      transactionReference: insertDeposit.transactionReference || null,
+      adminNotes: insertDeposit.adminNotes || null,
+      processedBy: insertDeposit.processedBy || null,
+      processedAt: insertDeposit.processedAt || null,
+      createdAt: new Date(),
+    };
+    this.deposits.set(id, deposit);
+    return deposit;
   }
 
-  async getDepositsByUserId(userId: string): Promise<DepositPlain[]> {
-    const deposits = await DepositModel.find({ userId });
-    return deposits.map(deposit => this.toPlain<DepositPlain>(deposit));
+  async getDepositsByUserId(userId: string): Promise<Deposit[]> {
+    return Array.from(this.deposits.values()).filter(deposit => deposit.userId === userId);
   }
 
-  async getAllDeposits(): Promise<DepositPlain[]> {
-    const deposits = await DepositModel.find();
-    return deposits.map(deposit => this.toPlain<DepositPlain>(deposit));
+  async getAllDeposits(): Promise<Deposit[]> {
+    return Array.from(this.deposits.values());
   }
 
-  async updateDeposit(id: string, updates: Partial<DepositPlain>): Promise<DepositPlain | undefined> {
-    const deposit = await DepositModel.findByIdAndUpdate(id, updates, { new: true });
-    return deposit ? this.toPlain<DepositPlain>(deposit) : undefined;
+  async updateDeposit(id: string, updates: Partial<Deposit>): Promise<Deposit | undefined> {
+    const deposit = this.deposits.get(id);
+    if (!deposit) return undefined;
+    
+    const updatedDeposit = { ...deposit, ...updates };
+    this.deposits.set(id, updatedDeposit);
+    return updatedDeposit;
   }
 
   // KYC Document methods
-  async createKycDocument(insertKycDocument: InsertKycDocument): Promise<KycDocumentPlain> {
-    const kycDocument = new KycDocumentModel(insertKycDocument);
-    const savedDocument = await kycDocument.save();
-    return this.toPlain<KycDocumentPlain>(savedDocument);
+  async createKycDocument(insertKycDocument: InsertKycDocument): Promise<KycDocument> {
+    const id = randomUUID();
+    const kycDocument: KycDocument = {
+      id,
+      ...insertKycDocument,
+      documentUrl: insertKycDocument.documentUrl || null,
+      reviewedBy: insertKycDocument.reviewedBy || null,
+      reviewNotes: insertKycDocument.reviewNotes || null,
+      reviewedAt: insertKycDocument.reviewedAt || null,
+      createdAt: new Date(),
+    };
+    this.kycDocuments.set(id, kycDocument);
+    return kycDocument;
   }
 
-  async getKycDocumentsByUserId(userId: string): Promise<KycDocumentPlain[]> {
-    const documents = await KycDocumentModel.find({ userId });
-    return documents.map(doc => this.toPlain<KycDocumentPlain>(doc));
+  async getKycDocumentsByUserId(userId: string): Promise<KycDocument[]> {
+    return Array.from(this.kycDocuments.values()).filter(doc => doc.userId === userId);
   }
 
-  async getAllKycDocuments(): Promise<KycDocumentPlain[]> {
-    const documents = await KycDocumentModel.find();
-    return documents.map(doc => this.toPlain<KycDocumentPlain>(doc));
+  async getAllKycDocuments(): Promise<KycDocument[]> {
+    return Array.from(this.kycDocuments.values());
   }
 
-  async updateKycDocument(id: string, updates: Partial<KycDocumentPlain>): Promise<KycDocumentPlain | undefined> {
-    const document = await KycDocumentModel.findByIdAndUpdate(id, updates, { new: true });
-    return document ? this.toPlain<KycDocumentPlain>(document) : undefined;
+  async updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined> {
+    const doc = this.kycDocuments.get(id);
+    if (!doc) return undefined;
+    
+    const updatedDoc = { ...doc, ...updates };
+    this.kycDocuments.set(id, updatedDoc);
+    return updatedDoc;
   }
 }
 
-// Export a singleton instance
-export const storage = new MongoStorage();
+// Export storage instance
+export const storage = new MemStorage();

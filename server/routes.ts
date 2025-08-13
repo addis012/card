@@ -709,6 +709,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import existing Strowallet card
+  app.post("/api/import-strowallet-card", async (req, res) => {
+    try {
+      const { card_id, balance, currency } = req.body;
+      
+      if (!card_id) {
+        return res.status(400).json({ message: "Card ID is required" });
+      }
+
+      // Create card record in our system
+      const card = await storage.createCard({
+        userId: "system", // We'll need to associate with a real user later
+        strowalletCardId: card_id,
+        balance: balance || "0.00",
+        spendingLimit: "1000.00",
+        currency: currency || "USD",
+        status: "active",
+        cardType: "virtual",
+        maskedNumber: "**** **** **** " + card_id.substring(0, 4),
+        expiryDate: "12/2026",
+        cvv: "***"
+      });
+
+      // Fetch and import transactions
+      const strowalletService = new StrowalletService();
+      try {
+        const response = await fetch("https://strowallet.com/api/bitvcard/card-transactions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.STROWALLET_SECRET_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            public_key: process.env.STROWALLET_PUBLIC_KEY,
+            card_id: card_id
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const transactions = data.response?.card_transactions || [];
+          
+          // Import each transaction
+          for (const tx of transactions.slice(0, 10)) { // Limit to recent 10
+            await storage.createTransaction({
+              cardId: card.id,
+              merchant: tx.narrative || "Strowallet Transaction",
+              amount: Math.abs(parseFloat(tx.amount || 0)).toString(),
+              currency: tx.currency?.toUpperCase() || "USD",
+              status: tx.status === "success" ? "completed" : "failed",
+              type: tx.type === "credit" ? "deposit" : "purchase",
+              description: tx.narrative,
+              transactionReference: tx.id
+            });
+          }
+        }
+      } catch (error) {
+        console.log("Error importing transactions:", error);
+      }
+
+      res.json({ 
+        message: "Card imported successfully", 
+        card: {
+          id: card.id,
+          strowalletCardId: card.strowalletCardId,
+          balance: card.balance,
+          status: card.status
+        }
+      });
+    } catch (error) {
+      console.error("Error importing Strowallet card:", error);
+      res.status(500).json({ message: "Failed to import card" });
+    }
+  });
+
   // Create an admin user for testing
   app.post("/api/admin/create-test-user", async (req, res) => {
     try {

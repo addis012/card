@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./hybrid-storage";
 import { StrowalletService } from "./strowallet";
 import { 
   insertCardSchema, 
@@ -686,6 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   cardId: card.id,
                   amount: webhookData.amount || "0",
                   currency: "USDT",
+                  status: "completed",
                   description: webhookData.description || "Webhook transaction",
                   merchant: webhookData.merchant_name || "Unknown",
                   type: webhookData.transaction_type === "debit" ? "purchase" : "deposit"
@@ -719,7 +720,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: "Admin",
         lastName: "User",
         password: hashedPassword,
-        role: "admin"
+        role: "admin",
+        kycStatus: "approved"
       });
       
       const { password, ...userResponse } = adminUser;
@@ -994,7 +996,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
         firstName: firstName || "Admin",
         lastName: lastName || "User",
-        role: "admin"
+        role: "admin",
+        kycStatus: "approved"
       });
       
       const { password: _, ...adminResponse } = adminUser;
@@ -1213,6 +1216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileData,
         contentType,
         fileSize,
+        status: "pending",
         documentUrl: `data:${contentType};base64,${fileData}` // Store as data URL
       });
 

@@ -709,6 +709,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get card details from Strowallet
+  app.get("/api/strowallet-card/:cardId", async (req, res) => {
+    try {
+      const { cardId } = req.params;
+      
+      // Try to get card info from Strowallet using transaction endpoint which works
+      const response = await fetch("https://strowallet.com/api/bitvcard/card-transactions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.STROWALLET_SECRET_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          public_key: process.env.STROWALLET_PUBLIC_KEY,
+          card_id: cardId
+        })
+      });
+
+      if (!response.ok) {
+        return res.status(404).json({ message: "Card not found or API error" });
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.response?.card_transactions?.length > 0) {
+        const transactions = data.response.card_transactions;
+        const latestTx = transactions[0];
+        
+        // Extract card information from transaction data
+        const cardInfo = {
+          card_id: cardId,
+          balance: latestTx.cardBalanceAfter || "0.00",
+          currency: latestTx.currency?.toUpperCase() || "USD",
+          status: "active",
+          transaction_count: transactions.length,
+          recent_transactions: transactions.slice(0, 5).map(tx => ({
+            id: tx.id,
+            amount: tx.amount,
+            type: tx.type,
+            narrative: tx.narrative,
+            status: tx.status,
+            date: tx.createdAt
+          }))
+        };
+
+        // Note: Card number is not available through transaction endpoint for security
+        res.json({
+          success: true,
+          card: cardInfo,
+          note: "Card number not available through API for security reasons. Please check your Strowallet dashboard for full card details."
+        });
+      } else {
+        res.status(404).json({ message: "No transaction data found for this card" });
+      }
+    } catch (error) {
+      console.error("Error fetching card details:", error);
+      res.status(500).json({ message: "Failed to fetch card details" });
+    }
+  });
+
   // Import existing Strowallet card
   app.post("/api/import-strowallet-card", async (req, res) => {
     try {

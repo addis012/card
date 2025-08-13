@@ -109,7 +109,9 @@ export class StrowalletService {
     this.secretKey = process.env.STROWALLET_SECRET_KEY || "";
     
     if (!this.publicKey || !this.secretKey) {
-      throw new Error("Strowallet API credentials not found. Please set STROWALLET_PUBLIC_KEY and STROWALLET_SECRET_KEY environment variables.");
+      console.log("Strowallet API credentials not found. Using development mode with mock responses.");
+    } else {
+      console.log("Strowallet service initialized with API credentials");
     }
   }
 

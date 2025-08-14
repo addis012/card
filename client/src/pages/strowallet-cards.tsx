@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Calendar, Hash, User, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CreditCard, Calendar, Hash, User, Mail, RefreshCw } from "lucide-react";
 
 interface StrowalletCard {
   cardId: string;
@@ -27,11 +28,12 @@ export default function StrowalletCards() {
 
   const fetchCards = async () => {
     try {
-      const response = await fetch('/api/strowallet-cards');
+      const response = await fetch('/api/strowallet-cards?' + new Date().getTime()); // Cache busting
       const data = await response.json();
       
       if (data.success) {
         setCards(data.cards);
+        console.log('Updated card data:', data.cards);
       }
     } catch (error) {
       console.error('Error fetching cards:', error);
@@ -71,12 +73,20 @@ export default function StrowalletCards() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Strowallet Cards
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Your real cards created on the Strowallet platform
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Strowallet Cards
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Your real cards created on the Strowallet platform
+            </p>
+          </div>
+          <Button onClick={fetchCards} variant="outline" className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Check Status
+          </Button>
+        </div>
       </div>
 
       {cards.length === 0 ? (
@@ -169,6 +179,17 @@ export default function StrowalletCards() {
                       <p className="font-mono text-xs">{card.customerId}</p>
                     </div>
                   </div>
+                  {card.note && (
+                    <div className="mt-2 text-xs text-gray-500 italic">
+                      {card.note}
+                    </div>
+                  )}
+                  {card.balance !== undefined && (
+                    <div className="mt-2 text-sm">
+                      <span className="text-gray-500">Balance: </span>
+                      <span className="font-semibold text-green-600">${card.balance}</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

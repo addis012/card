@@ -12,9 +12,15 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcrypt";
+import { registerAdminRoutes } from "./routes/admin";
+import { registerAuthRoutes } from "./routes/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const DEFAULT_USER_ID = 'user-1'; // For demo purposes
+
+  // Register modular routes
+  registerAdminRoutes(app);
+  registerAuthRoutes(app);
 
   // Get all cards for the current user
   app.get("/api/cards", async (req, res) => {

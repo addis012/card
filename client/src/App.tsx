@@ -21,6 +21,8 @@ import Customers from "@/pages/customers";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import MobileHeader from "@/components/layout/mobile-header";
+import UserRegistration from "@/pages/user-registration";
+import UserDashboard from "@/pages/user-dashboard";
 import { useState } from "react";
 import LandingPage from "@/pages/landing";
 
@@ -35,8 +37,8 @@ function AuthenticatedRoutes() {
       <div className="lg:ml-80 min-h-screen">
         <main className="p-0">
           <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/" component={UserDashboard} />
+            <Route path="/dashboard" component={UserDashboard} />
             <Route path="/cards" component={Cards} />
             <Route path="/transactions" component={Transactions} />
             <Route path="/deposits" component={Deposits} />
@@ -59,7 +61,8 @@ function PublicRoutes() {
       <Switch>
         <Route path="/" component={LandingPage} />
         <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
+        <Route path="/register" component={UserRegistration} />
+        <Route path="/register-simple" component={Register} />
         <Route path="/admin-login" component={AdminLogin} />
         <Route component={LandingPage} />
       </Switch>

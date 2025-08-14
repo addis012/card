@@ -205,6 +205,19 @@ export class HybridStorage implements IStorage {
     return this.getUserById(id);
   }
 
+  async getAllUsers(): Promise<User[]> {
+    if (!this.useMongoDb) {
+      return this.memStorage.getAllUsers();
+    }
+
+    try {
+      const users = await UserModel.find({});
+      return users.map(user => this.convertMongoDoc<User>(user));
+    } catch (error) {
+      return this.memStorage.getAllUsers();
+    }
+  }
+
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
     if (!this.useMongoDb) {
       return this.memStorage.updateUser(id, updates);

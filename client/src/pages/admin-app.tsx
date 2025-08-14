@@ -2,6 +2,7 @@ import { Switch, Route } from "wouter";
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
 import AdminLogin from "@/pages/admin-login";
 import AdminPanel from "@/pages/admin";
+import AdminCustomers from "@/pages/admin-customers";
 import NotFound from "@/pages/not-found";
 
 function AdminRoutes() {
@@ -26,11 +27,12 @@ function AdminRoutes() {
     <Switch>
       <Route path="/admin" component={AdminPanel} />
       <Route path="/admin/dashboard" component={AdminPanel} />
+      <Route path="/admin/customers" component={AdminCustomers} />
       <Route path="/admin/cards" component={AdminPanel} />
       <Route path="/admin/add-money" component={AdminPanel} />
       <Route path="/admin/my-cards" component={AdminPanel} />
       <Route path="/admin/transactions" component={AdminPanel} />
-      <Route path="/admin/users" component={AdminPanel} />
+      <Route path="/admin/users" component={AdminCustomers} />
       <Route path="/admin/kyc" component={AdminPanel} />
       <Route path="/admin/settings" component={AdminPanel} />
       <Route component={NotFound} />

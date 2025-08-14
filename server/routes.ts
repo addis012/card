@@ -2,9 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./hybrid-storage";
 import { StrowalletService } from "./strowallet";
-import { 
-  insertCardSchema, 
-  insertTransactionSchema, 
+import {
+  insertCardSchema,
+  insertTransactionSchema,
   insertUserSchema,
   insertDepositSchema,
   insertKycDocumentSchema
@@ -45,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Use authenticated user ID from session, fallback to DEFAULT_USER_ID
       const userId = req.session?.user?.id || DEFAULT_USER_ID;
-      
+
       const validatedData = insertCardSchema.parse({
         ...req.body,
         userId: userId,
@@ -99,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/create-card", requireAdmin, async (req, res) => {
     try {
       const { userId, cardType = "VIRTUAL", spendingLimit, bypassKYC = false } = req.body;
-      
+
       if (!userId) {
         return res.status(400).json({ message: "User ID is required" });
       }
@@ -114,22 +114,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!bypassKYC && user.role !== 'admin') {
         const kycDocuments = await storage.getKycDocumentsByUserId(userId);
         const hasApprovedDocs = kycDocuments.some(doc => doc.status === "approved");
-        
+
         if (!hasApprovedDocs) {
-          return res.status(400).json({ 
-            message: "User must have approved KYC documents before card creation. Use bypassKYC: true to override." 
+          return res.status(400).json({
+            message: "User must have approved KYC documents before card creation. Use bypassKYC: true to override."
           });
         }
       }
 
       // Initialize Strowallet service
       const strowalletService = new StrowalletService();
-      
+
       // Create card via Strowallet API
       const cardHolderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
       console.log("About to call Strowallet API with user:", JSON.stringify(user, null, 2));
       console.log("Card holder name:", cardHolderName);
-      
+
       // Use direct API call instead of service for better error handling
       const strowalletResponse = await fetch('https://strowallet.com/api/bitvcard/create-card', {
         method: 'POST',
@@ -150,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const strowalletText = await strowalletResponse.text();
       let strowalletCard;
-      
+
       try {
         strowalletCard = JSON.parse(strowalletText);
       } catch {
@@ -165,10 +165,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           balance: "0.00"
         };
       }
-      
+
       console.log("Strowallet response status:", strowalletResponse.status);
       console.log("Strowallet response:", JSON.stringify(strowalletCard, null, 2));
-      
+
       console.log("Received response from Strowallet:", JSON.stringify(strowalletCard, null, 2));
 
       // Store card in our database
@@ -197,8 +197,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error creating card via Strowallet:", error);
-      res.status(500).json({ 
-        message: "Failed to create card via Strowallet", 
+      res.status(500).json({
+        message: "Failed to create card via Strowallet",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -312,9 +312,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionID: req.sessionID,
         user: req.session?.user
       });
-      
+
       if (!req.session?.user?.id) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: "Authentication required",
           debug: {
             hasSession: !!req.session,
@@ -356,7 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const strowalletResult = await response.text();
-        
+
         try {
           strowalletData = JSON.parse(strowalletResult);
           console.log("Strowallet response:", { status: response.status, data: strowalletData });
@@ -385,15 +385,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json({
         success: true,
-        message: strowalletData?.success !== false ? 
-          "Card created successfully with Strowallet" : 
+        message: strowalletData?.success !== false ?
+          "Card created successfully with Strowallet" :
           "Card created locally (Strowallet API restricted)",
         card: card,
         strowalletStatus: strowalletData?.success !== false ? "success" : "ip_restricted"
       });
     } catch (error) {
       console.error("Error creating card:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Failed to create card",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -432,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const strowalletResult = await response.text();
-        
+
         try {
           strowalletData = JSON.parse(strowalletResult);
           console.log("Strowallet API response:", { status: response.status, data: strowalletData });
@@ -461,8 +461,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json({
         success: true,
-        message: strowalletData?.success !== false ? 
-          "Card created successfully with Strowallet" : 
+        message: strowalletData?.success !== false ?
+          "Card created successfully with Strowallet" :
           "Card created locally (Strowallet API IP restricted)",
         card: card,
         strowalletStatus: strowalletData?.success !== false ? "success" : "ip_restricted",
@@ -471,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error creating card:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Failed to create card",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -483,10 +483,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/create-card-direct", async (req, res) => {
     try {
       const { customerId, customerName, customerEmail, amount = 100 } = req.body;
-      
+
       if (!customerId || !customerName) {
-        return res.status(400).json({ 
-          message: "customerId and customerName are required" 
+        return res.status(400).json({
+          message: "customerId and customerName are required"
         });
       }
 
@@ -513,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const strowalletResult = await response.text();
         let strowalletData;
-        
+
         try {
           strowalletData = JSON.parse(strowalletResult);
         } catch {
@@ -562,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error("Error in create-card-direct:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Internal server error",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -575,7 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Test various endpoints to find working ones
       const strowalletService = new StrowalletService();
-      
+
       const testEndpoints = [
         "/api/bitvcard/fetch-card-detail/",
         "/api/bitvcard/card-transactions/",
@@ -586,9 +586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "/bitvcard/cards",
         "/bitvcard/transactions"
       ];
-      
+
       const results: Record<string, any> = {};
-      
+
       for (const endpoint of testEndpoints) {
         try {
           const response = await fetch(`https://strowallet.com${endpoint}`, {
@@ -599,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               "Content-Type": "application/json",
             },
           });
-          
+
           const text = await response.text();
           let data;
           try {
@@ -607,7 +607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch {
             data = text.substring(0, 500) + (text.length > 500 ? "..." : "");
           }
-          
+
           results[endpoint] = {
             status: response.status,
             data: data
@@ -618,7 +618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }
       }
-      
+
       res.json({
         message: "Strowallet API endpoint test results",
         credentials: {
@@ -630,17 +630,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error testing Strowallet endpoints:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to test Strowallet endpoints",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
-
-  // User Registration (using the enhanced version below)
-  // Registration endpoint removed - using the enhanced version below
-
-  // Login endpoint removed - using the enhanced version below
 
   // Get card transaction history from Strowallet
   app.get("/api/cards/:cardId/strowallet-transactions", async (req, res) => {
@@ -773,7 +768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const strowalletService = new StrowalletService();
       const newStatus = blocked ? "BLOCKED" : "ACTIVE";
-      
+
       await strowalletService.updateCardStatus(card.strowalletCardId, newStatus);
 
       // Update local card status
@@ -857,7 +852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         userId: req.body.userId || DEFAULT_USER_ID,
       });
-      
+
       // Create card via Strowallet API
       const strowalletService = new StrowalletService();
       const strowalletRequest = {
@@ -872,9 +867,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billing_zip: validatedData.billingZip || "",
         billing_country: validatedData.billingCountry || "US",
       };
-      
+
       const strowalletCard = await strowalletService.createCard(strowalletRequest);
-      
+
       // Save card to local database with Strowallet details
       const cardData = {
         ...validatedData,
@@ -884,9 +879,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         strowalletCardId: strowalletCard.card_id,
         balance: req.body.amount || "100",
       };
-      
+
       const card = await storage.createCard(cardData);
-      
+
       res.status(201).json({
         message: "Card created successfully via Strowallet",
         card,
@@ -981,18 +976,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const cards = await storage.getCardsByUserId(DEFAULT_USER_ID);
       const transactions = await storage.getTransactionsByUserId(DEFAULT_USER_ID);
-      
+
       const activeCards = cards.filter(card => card.status === 'active').length;
       const totalVolume = transactions.reduce((sum, txn) => sum + Math.abs(parseFloat(txn.amount.toString())), 0);
       const totalTransactions = transactions.length;
-      
+
       const stats = {
         activeCards,
         monthlyVolume: totalVolume,
         transactions: totalTransactions,
         uptime: 99.9,
       };
-      
+
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
@@ -1005,9 +1000,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("=== Strowallet Webhook Received ===");
       console.log("Headers:", JSON.stringify(req.headers, null, 2));
       console.log("Body:", JSON.stringify(req.body, null, 2));
-      
+
       const webhookData = req.body;
-      
+
       // Process different webhook types
       if (webhookData.event_type) {
         switch (webhookData.event_type) {
@@ -1027,7 +1022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
             break;
-            
+
           case "card.funded":
             console.log(`Card funded: ${webhookData.card_id} with ${webhookData.amount}`);
             // Update card balance
@@ -1041,7 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
             break;
-            
+
           case "transaction.created":
             console.log(`Transaction created: ${webhookData.transaction_id} on card ${webhookData.card_id}`);
             // Create transaction record
@@ -1062,12 +1057,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
             break;
-            
+
           default:
             console.log(`Unknown webhook event type: ${webhookData.event_type}`);
         }
       }
-      
+
       // Always respond with 200 to acknowledge receipt
       res.status(200).json({ message: "Webhook received successfully", received_at: new Date().toISOString() });
     } catch (error) {
@@ -1080,7 +1075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/strowallet-card/:cardId", async (req, res) => {
     try {
       const { cardId } = req.params;
-      
+
       // Try to get card info from Strowallet using transaction endpoint which works
       const response = await fetch("https://strowallet.com/api/bitvcard/card-transactions", {
         method: "POST",
@@ -1099,11 +1094,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const data = await response.json();
-      
+
       if (data.success && data.response?.card_transactions?.length > 0) {
         const transactions = data.response.card_transactions;
         const latestTx = transactions[0];
-        
+
         // Extract card information from transaction data
         const cardInfo = {
           card_id: cardId,
@@ -1140,7 +1135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/import-strowallet-card", async (req, res) => {
     try {
       const { card_id, balance, currency } = req.body;
-      
+
       if (!card_id) {
         return res.status(400).json({ message: "Card ID is required" });
       }
@@ -1177,7 +1172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (response.ok) {
           const data = await response.json();
           const transactions = data.response?.card_transactions || [];
-          
+
           // Import each transaction
           for (const tx of transactions.slice(0, 10)) { // Limit to recent 10
             await storage.createTransaction({
@@ -1196,8 +1191,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Error importing transactions:", error);
       }
 
-      res.json({ 
-        message: "Card imported successfully", 
+      res.json({
+        message: "Card imported successfully",
         card: {
           id: card.id,
           strowalletCardId: card.strowalletCardId,
@@ -1225,7 +1220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: "admin",
         kycStatus: "approved"
       });
-      
+
       const { password, ...userResponse } = adminUser;
       res.json({ message: "Test admin user created", user: userResponse });
     } catch (error) {
@@ -1277,7 +1272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (updates.reviewedAt === undefined && (updates.status === 'approved' || updates.status === 'rejected')) {
         updates.reviewedAt = new Date();
       }
-      
+
       const document = await storage.updateKycDocument(req.params.id, updates);
       if (!document) {
         return res.status(404).json({ message: "KYC document not found" });
@@ -1293,28 +1288,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const validatedData = insertUserSchema.parse(req.body);
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(validatedData.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
       }
-      
+
       // Check if email already exists
       const existingEmail = await storage.getUserByEmail(validatedData.email);
       if (existingEmail) {
         return res.status(400).json({ message: "Email already exists" });
       }
-      
+
       // Hash password before storing
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
       const userDataWithHashedPassword = {
         ...validatedData,
         password: hashedPassword
       };
-      
+
       const user = await storage.createUser(userDataWithHashedPassword);
-      
+
       // Return user data without password for frontend
       const { password, ...userResponse } = user;
       res.status(201).json({ message: "Registration successful", user: userResponse });
@@ -1331,24 +1326,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      
+
       if (!username || !password) {
         return res.status(400).json({ message: "Username and password are required" });
       }
-      
+
       // Find user
       const user = await storage.getUserByUsername(username);
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-      
+
       // Verify password
       const isValid = await bcrypt.compare(password, user.password);
-      
+
       if (!isValid) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-      
+
       // Store user session
       if (req.session) {
         req.session.user = {
@@ -1360,7 +1355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: user.role
         };
       }
-      
+
       const { password: _, ...userResponse } = user;
       res.json({ message: "Login successful", user: userResponse });
     } catch (error) {
@@ -1413,29 +1408,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ ADMIN AUTHENTICATION ROUTES ============
-  
+
   // Admin login endpoint
   app.post("/api/admin/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      
+
       if (!username || !password) {
         return res.status(400).json({ message: "Username and password are required" });
       }
-      
+
       // Find admin user - only allow users with admin role
       const user = await storage.getUserByUsername(username);
       if (!user || user.role !== 'admin') {
         return res.status(401).json({ message: "Invalid admin credentials" });
       }
-      
+
       // Verify password
       const isValid = await bcrypt.compare(password, user.password);
-      
+
       if (!isValid) {
         return res.status(401).json({ message: "Invalid admin credentials" });
       }
-      
+
       // Store admin session (separate from user session)
       if (req.session) {
         req.session.admin = {
@@ -1447,7 +1442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: user.role
         };
       }
-      
+
       const { password: _, ...adminResponse } = user;
       res.json({ message: "Admin login successful", admin: adminResponse });
     } catch (error) {
@@ -1477,20 +1472,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/setup", async (req, res) => {
     try {
       const { username, password, email, firstName, lastName } = req.body;
-      
+
       if (!username || !password || !email) {
         return res.status(400).json({ message: "Username, password, and email are required" });
       }
-      
+
       // Check if admin already exists
       const existingAdmin = await storage.getUserByUsername(username);
       if (existingAdmin) {
         return res.status(400).json({ message: "Admin user already exists" });
       }
-      
+
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
-      
+
       // Create admin user
       const adminUser = await storage.createUser({
         username,
@@ -1501,7 +1496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: "admin",
         kycStatus: "approved"
       });
-      
+
       const { password: _, ...adminResponse } = adminUser;
       res.status(201).json({ message: "Admin user created successfully", admin: adminResponse });
     } catch (error) {
@@ -1515,7 +1510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { username } = req.params;
       const deleted = await storage.deleteUserByUsername(username);
-      
+
       if (deleted) {
         res.json({ message: `User '${username}' deleted successfully` });
       } else {
@@ -1531,7 +1526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/cards/:id/address", async (req, res) => {
     try {
       const card = await storage.getCard(req.params.id);
-      
+
       if (!card) {
         return res.status(404).json({ message: "Card not found" });
       }
@@ -1555,13 +1550,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/cards/:id/address", async (req, res) => {
     try {
-      const { 
-        billingAddress, 
-        billingCity, 
-        billingState, 
-        billingZip, 
-        billingCountry, 
-        nameOnCard 
+      const {
+        billingAddress,
+        billingCity,
+        billingState,
+        billingZip,
+        billingCountry,
+        nameOnCard
       } = req.body;
 
       const card = await storage.updateCard(req.params.id, {
@@ -1598,9 +1593,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced admin card creation with address support
   app.post("/api/admin/create-card-with-address", async (req, res) => {
     try {
-      const { 
-        userId, 
-        cardType = "VIRTUAL", 
+      const {
+        userId,
+        cardType = "VIRTUAL",
         spendingLimit,
         billingAddress,
         billingCity,
@@ -1609,7 +1604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingCountry,
         nameOnCard
       } = req.body;
-      
+
       if (!userId) {
         return res.status(400).json({ message: "User ID is required" });
       }
@@ -1623,14 +1618,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has approved KYC documents
       const kycDocuments = await storage.getKycDocumentsByUserId(userId);
       const hasApprovedDocs = kycDocuments.some(doc => doc.status === "approved");
-      
+
       if (!hasApprovedDocs) {
         return res.status(400).json({ message: "User must have approved KYC documents before card creation" });
       }
 
       // Initialize Strowallet service
       const strowalletService = new StrowalletService();
-      
+
       // Create card via Strowallet API with address information
       const cardHolderName = nameOnCard || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
       const strowalletCard = await strowalletService.createCard({
@@ -1687,8 +1682,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error creating card with address:", error);
-      res.status(500).json({ 
-        message: "Failed to create card with address", 
+      res.status(500).json({
+        message: "Failed to create card with address",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -1698,10 +1693,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/files/upload", async (req, res) => {
     try {
       const { fileName, fileData, contentType, fileSize, userId, documentType } = req.body;
-      
+
       if (!fileName || !fileData || !contentType || !fileSize || !userId || !documentType) {
-        return res.status(400).json({ 
-          message: "Missing required fields: fileName, fileData, contentType, fileSize, userId, documentType" 
+        return res.status(400).json({
+          message: "Missing required fields: fileName, fileData, contentType, fileSize, userId, documentType"
         });
       }
 
@@ -1722,7 +1717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         documentUrl: `data:${contentType};base64,${fileData}` // Store as data URL
       });
 
-      res.status(201).json({ 
+      res.status(201).json({
         message: "File uploaded successfully",
         documentId: kycDocument.id,
         documentUrl: kycDocument.documentUrl
@@ -1739,7 +1734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For MemStorage, we'll get all documents and find by ID
       const allDocs = await storage.getAllKycDocuments();
       const document = allDocs.find(doc => doc.id === req.params.documentId);
-      
+
       if (!document) {
         return res.status(404).json({ message: "File not found" });
       }

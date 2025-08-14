@@ -1,0 +1,204 @@
+StroWallet API Code Examples
+1. Create Customer
+
+POST https://strowallet.com/api/bitvcard/create-user/
+
+import requests
+
+url = "https://strowallet.com/api/bitvcard/create-user/"
+
+payload = {
+    "public_key": "YOUR_PUBLIC_KEY",
+    "houseNumber": "12B",
+    "firstName": "John",
+    "lastName": "Doe",
+    "idNumber": "AB123456",
+    "customerEmail": "john@example.com",
+    "phoneNumber": "2348012345678",  # No "+"
+    "dateOfBirth": "01/15/1990",
+    "idImage": "https://example.com/id.jpg",
+    "userPhoto": "https://example.com/photo.jpg",
+    "line1": "123 Main Street",
+    "state": "Lagos",
+    "zipCode": "100001",
+    "city": "Ikeja",
+    "country": "NG",
+    "idType": "PASSPORT"
+}
+
+response = requests.post(url, json=payload)
+print(response.status_code)
+print(response.json())
+
+
+Example 200 Response
+
+{
+    "status": true,
+    "message": "Customer created successfully",
+    "data": {
+        "customerId": "CUST_123456",
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john@example.com"
+    }
+}
+
+
+Example 400 Response
+
+{
+    "status": false,
+    "message": "Missing required field: phoneNumber"
+}
+
+2. Get Customer
+
+GET https://strowallet.com/api/bitvcard/getcardholder/
+
+import requests
+
+params = {
+    "public_key": "YOUR_PUBLIC_KEY",
+    "customerEmail": "john@example.com"
+}
+
+response = requests.get("https://strowallet.com/api/bitvcard/getcardholder/", params=params)
+print(response.status_code)
+print(response.json())
+
+3. Update Customer
+
+PUT https://strowallet.com/api/bitvcard/updateCardCustomer/
+
+import requests
+
+url = "https://strowallet.com/api/bitvcard/updateCardCustomer/"
+
+payload = {
+    "public_key": "YOUR_PUBLIC_KEY",
+    "customerId": "CUST_123456",
+    "firstName": "John",
+    "lastName": "Smith",
+    "phoneNumber": "2348012345678",
+    "country": "NG",
+    "city": "Ikeja",
+    "state": "Lagos",
+    "zipCode": "100001",
+    "line1": "123 Main Street",
+    "houseNumber": "12B",
+    "idImage": "https://example.com/id.jpg",
+    "userPhoto": "https://example.com/photo.jpg"
+}
+
+response = requests.put(url, json=payload)
+print(response.status_code)
+print(response.json())
+
+4. Create New Card
+
+POST https://strowallet.com/api/bitvcard/create-card/
+
+import requests
+
+url = "https://strowallet.com/api/bitvcard/create-card/"
+
+payload = {
+    "name_on_card": "John Doe",
+    "card_type": "visa",
+    "public_key": "YOUR_PUBLIC_KEY",
+    "amount": "5",
+    "customerEmail": "john@example.com",
+    "mode": "sandbox"
+}
+
+response = requests.post(url, json=payload)
+print(response.status_code)
+print(response.json())
+
+5. Fund Card
+
+POST https://strowallet.com/api/bitvcard/fund-card/
+
+import requests
+
+url = "https://strowallet.com/api/bitvcard/fund-card/"
+
+payload = {
+    "card_id": "CARD_12345",
+    "amount": "10",
+    "public_key": "YOUR_PUBLIC_KEY",
+    "mode": "sandbox"
+}
+
+response = requests.post(url, json=payload)
+print(response.status_code)
+print(response.json())
+
+6. Get Card Details
+
+POST https://strowallet.com/api/bitvcard/fetch-card-detail/
+
+import requests
+
+payload = {
+    "card_id": "CARD_12345",
+    "public_key": "YOUR_PUBLIC_KEY",
+    "mode": "sandbox"
+}
+
+response = requests.post("https://strowallet.com/api/bitvcard/fetch-card-detail/", json=payload)
+print(response.json())
+
+7. Card Transactions
+
+POST https://strowallet.com/api/bitvcard/card-transactions/
+
+import requests
+
+payload = {
+    "card_id": "CARD_12345",
+    "public_key": "YOUR_PUBLIC_KEY",
+    "mode": "sandbox"
+}
+
+response = requests.post("https://strowallet.com/api/bitvcard/card-transactions/", json=payload)
+print(response.json())
+
+8. Freeze / Unfreeze Card
+
+POST https://strowallet.com/api/bitvcard/action/status/
+
+import requests
+
+payload = {
+    "action": "freeze",
+    "card_id": "CARD_12345",
+    "public_key": "YOUR_PUBLIC_KEY"
+}
+
+response = requests.post("https://strowallet.com/api/bitvcard/action/status/", json=payload)
+print(response.json())
+
+9. Full Card History
+
+GET https://strowallet.com/api/apicard-transactions/
+
+import requests
+
+params = {
+    "card_id": "CARD_12345",
+    "page": "1",
+    "take": "50",
+    "public_key": "YOUR_PUBLIC_KEY"
+}
+
+response = requests.get("https://strowallet.com/api/apicard-transactions/", params=params)
+print(response.json())
+
+
+If you want, I can now package all these endpoints with the request bodies, headers, and response parsing into a single Postman collection file so you can just import it and start testing without manually writing code.
+
+Do you want me to make that Postman collection for StroWallet?
+
+ChatGPT can make mistakes. Check important info.

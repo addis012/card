@@ -5,12 +5,14 @@ import type {
   ApiKey,
   Deposit,
   KycDocument,
+  StrowalletCustomer,
   InsertUser,
   InsertCard,
   InsertTransaction,
   InsertApiKey,
   InsertDeposit,
   InsertKycDocument,
+  InsertStrowalletCustomer,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -57,6 +59,13 @@ export interface IStorage {
   getKycDocumentsByUserId(userId: string): Promise<KycDocument[]>;
   getAllKycDocuments(): Promise<KycDocument[]>;
   updateKycDocument(id: string, updates: Partial<KycDocument>): Promise<KycDocument | undefined>;
+
+  // Strowallet Customer methods
+  createStrowalletCustomer(insertStrowalletCustomer: InsertStrowalletCustomer): Promise<StrowalletCustomer>;
+  getStrowalletCustomerByUserId(userId: string): Promise<StrowalletCustomer | undefined>;
+  getStrowalletCustomerByEmail(email: string): Promise<StrowalletCustomer | undefined>;
+  getAllStrowalletCustomers(): Promise<StrowalletCustomer[]>;
+  updateStrowalletCustomer(id: string, updates: Partial<StrowalletCustomer>): Promise<StrowalletCustomer | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -66,6 +75,7 @@ export class MemStorage implements IStorage {
   private apiKeys: Map<string, ApiKey> = new Map();
   private deposits: Map<string, Deposit> = new Map();
   private kycDocuments: Map<string, KycDocument> = new Map();
+  private strowalletCustomers: Map<string, StrowalletCustomer> = new Map();
 
   constructor() {
     // Initialize with admin user
@@ -319,6 +329,45 @@ export class MemStorage implements IStorage {
     const updatedDoc = { ...doc, ...updates };
     this.kycDocuments.set(id, updatedDoc);
     return updatedDoc;
+  }
+
+  // Strowallet Customer methods
+  async createStrowalletCustomer(insertStrowalletCustomer: InsertStrowalletCustomer): Promise<StrowalletCustomer> {
+    const id = randomUUID();
+    const strowalletCustomer: StrowalletCustomer = {
+      id,
+      createdAt: new Date(),
+      ...insertStrowalletCustomer,
+    };
+    this.strowalletCustomers.set(id, strowalletCustomer);
+    return strowalletCustomer;
+  }
+
+  async getStrowalletCustomerByUserId(userId: string): Promise<StrowalletCustomer | undefined> {
+    for (const customer of this.strowalletCustomers.values()) {
+      if (customer.userId === userId) return customer;
+    }
+    return undefined;
+  }
+
+  async getStrowalletCustomerByEmail(email: string): Promise<StrowalletCustomer | undefined> {
+    for (const customer of this.strowalletCustomers.values()) {
+      if (customer.customerEmail === email) return customer;
+    }
+    return undefined;
+  }
+
+  async getAllStrowalletCustomers(): Promise<StrowalletCustomer[]> {
+    return Array.from(this.strowalletCustomers.values());
+  }
+
+  async updateStrowalletCustomer(id: string, updates: Partial<StrowalletCustomer>): Promise<StrowalletCustomer | undefined> {
+    const customer = this.strowalletCustomers.get(id);
+    if (!customer) return undefined;
+    
+    const updatedCustomer = { ...customer, ...updates };
+    this.strowalletCustomers.set(id, updatedCustomer);
+    return updatedCustomer;
   }
 }
 

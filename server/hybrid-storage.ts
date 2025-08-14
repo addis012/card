@@ -6,12 +6,14 @@ import type {
   ApiKey,
   Deposit,
   KycDocument,
+  StrowalletCustomer,
   InsertUser,
   InsertCard,
   InsertTransaction,
   InsertApiKey,
   InsertDeposit,
   InsertKycDocument,
+  InsertStrowalletCustomer,
 } from "@shared/schema";
 import { IStorage, MemStorage } from "./storage";
 import { randomUUID } from "crypto";
@@ -83,11 +85,35 @@ const kycDocumentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+const strowalletCustomerSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  strowalletCustomerId: { type: String },
+  publicKey: { type: String, required: true },
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  customerEmail: { type: String, required: true },
+  phoneNumber: { type: String, required: true },
+  dateOfBirth: { type: String, required: true }, // mm/dd/yyyy format
+  idNumber: { type: String, required: true },
+  idType: { type: String, required: true }, // BVN, NIN, PASSPORT, etc.
+  houseNumber: { type: String, required: true },
+  line1: { type: String, required: true },
+  city: { type: String, required: true },
+  state: { type: String, required: true },
+  zipCode: { type: String, required: true },
+  country: { type: String, required: true },
+  idImage: { type: String, required: true }, // base64 or URL
+  userPhoto: { type: String, required: true }, // base64 or URL
+  status: { type: String, enum: ['pending', 'created', 'failed'], default: 'pending' },
+  createdAt: { type: Date, default: Date.now }
+});
+
 // Create models if they don't exist
 const CardModel = mongoose.models.Card || mongoose.model('Card', cardSchema);
 const TransactionModel = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
 const ApiKeyModel = mongoose.models.ApiKey || mongoose.model('ApiKey', apiKeySchema);
 const KycDocumentModel = mongoose.models.KycDocument || mongoose.model('KycDocument', kycDocumentSchema);
+const StrowalletCustomerModel = mongoose.models.StrowalletCustomer || mongoose.model('StrowalletCustomer', strowalletCustomerSchema);
 
 export class HybridStorage implements IStorage {
   private memStorage: MemStorage;
@@ -521,6 +547,73 @@ export class HybridStorage implements IStorage {
       return doc ? this.convertMongoDoc<KycDocument>(doc) : undefined;
     } catch (error) {
       return this.memStorage.updateKycDocument(id, updates);
+    }
+  }
+
+  // Strowallet Customer methods
+  async createStrowalletCustomer(insertStrowalletCustomer: InsertStrowalletCustomer): Promise<StrowalletCustomer> {
+    if (!this.useMongoDb) {
+      return this.memStorage.createStrowalletCustomer(insertStrowalletCustomer);
+    }
+
+    try {
+      const customerDoc = new StrowalletCustomerModel(insertStrowalletCustomer);
+      const savedCustomer = await customerDoc.save();
+      return this.convertMongoDoc<StrowalletCustomer>(savedCustomer);
+    } catch (error) {
+      return this.memStorage.createStrowalletCustomer(insertStrowalletCustomer);
+    }
+  }
+
+  async getStrowalletCustomerByUserId(userId: string): Promise<StrowalletCustomer | undefined> {
+    if (!this.useMongoDb) {
+      return this.memStorage.getStrowalletCustomerByUserId(userId);
+    }
+
+    try {
+      const customer = await StrowalletCustomerModel.findOne({ userId });
+      return customer ? this.convertMongoDoc<StrowalletCustomer>(customer) : undefined;
+    } catch (error) {
+      return this.memStorage.getStrowalletCustomerByUserId(userId);
+    }
+  }
+
+  async getStrowalletCustomerByEmail(email: string): Promise<StrowalletCustomer | undefined> {
+    if (!this.useMongoDb) {
+      return this.memStorage.getStrowalletCustomerByEmail(email);
+    }
+
+    try {
+      const customer = await StrowalletCustomerModel.findOne({ customerEmail: email });
+      return customer ? this.convertMongoDoc<StrowalletCustomer>(customer) : undefined;
+    } catch (error) {
+      return this.memStorage.getStrowalletCustomerByEmail(email);
+    }
+  }
+
+  async getAllStrowalletCustomers(): Promise<StrowalletCustomer[]> {
+    if (!this.useMongoDb) {
+      return this.memStorage.getAllStrowalletCustomers();
+    }
+
+    try {
+      const customers = await StrowalletCustomerModel.find({});
+      return customers.map(c => this.convertMongoDoc<StrowalletCustomer>(c));
+    } catch (error) {
+      return this.memStorage.getAllStrowalletCustomers();
+    }
+  }
+
+  async updateStrowalletCustomer(id: string, updates: Partial<StrowalletCustomer>): Promise<StrowalletCustomer | undefined> {
+    if (!this.useMongoDb) {
+      return this.memStorage.updateStrowalletCustomer(id, updates);
+    }
+
+    try {
+      const customer = await StrowalletCustomerModel.findByIdAndUpdate(id, updates, { new: true });
+      return customer ? this.convertMongoDoc<StrowalletCustomer>(customer) : undefined;
+    } catch (error) {
+      return this.memStorage.updateStrowalletCustomer(id, updates);
     }
   }
 }

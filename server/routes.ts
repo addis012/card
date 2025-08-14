@@ -7,7 +7,8 @@ import {
   insertTransactionSchema,
   insertUserSchema,
   insertDepositSchema,
-  insertKycDocumentSchema
+  insertKycDocumentSchema,
+  insertStrowalletCustomerSchema
 } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcrypt";

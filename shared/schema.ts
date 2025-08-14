@@ -173,3 +173,39 @@ export const insertKycDocumentSchema = kycDocumentBaseSchema.omit({ id: true, cr
 
 export type KycDocument = z.infer<typeof kycDocumentBaseSchema>;
 export type InsertKycDocument = z.infer<typeof insertKycDocumentSchema>;
+
+// Strowallet Customer schema
+const strowalletCustomerBaseSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  strowalletCustomerId: z.string().nullable(),
+  publicKey: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  customerEmail: z.string().email(),
+  phoneNumber: z.string(),
+  dateOfBirth: z.string(), // mm/dd/yyyy format
+  idNumber: z.string(),
+  idType: z.string(), // BVN, NIN, PASSPORT, etc.
+  houseNumber: z.string(),
+  line1: z.string(),
+  city: z.string(),
+  state: z.string(),
+  zipCode: z.string(),
+  country: z.string(),
+  idImage: z.string(), // base64 or URL
+  userPhoto: z.string(), // base64 or URL
+  status: z.enum(['pending', 'created', 'failed']),
+  createdAt: z.date(),
+});
+
+export const insertStrowalletCustomerSchema = strowalletCustomerBaseSchema.omit({ 
+  id: true, 
+  createdAt: true 
+}).extend({
+  status: z.enum(['pending', 'created', 'failed']).default('pending'),
+  strowalletCustomerId: z.string().optional(),
+});
+
+export type StrowalletCustomer = z.infer<typeof strowalletCustomerBaseSchema>;
+export type InsertStrowalletCustomer = z.infer<typeof insertStrowalletCustomerSchema>;

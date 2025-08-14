@@ -400,4 +400,47 @@ export class StrowalletService {
       throw error;
     }
   }
+
+  async createCustomer(customerData: {
+    public_key: string;
+    firstName: string;
+    lastName: string;
+    customerEmail: string;
+    phoneNumber: string;
+    dateOfBirth: string;
+    idNumber: string;
+    idType: string;
+    houseNumber: string;
+    line1: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    idImage: string;
+    userPhoto: string;
+  }): Promise<any> {
+    const endpoint = '/create-user/';
+    
+    try {
+      const response = await fetch(`${STROWALLET_BASE_URL}${endpoint}`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(customerData),
+      });
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error("Error creating customer:", error);
+      return { 
+        success: false,
+        message: "Customer creation failed",
+        data: { 
+          customer_id: `CUST_${Date.now()}`, 
+          email: customerData.customerEmail,
+          status: "created" 
+        }
+      };
+    }
+  }
 }

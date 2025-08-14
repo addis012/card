@@ -8,7 +8,8 @@ import {
   Settings, 
   UserCircle, 
   LogOut,
-  Bell
+  Bell,
+  Users
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/cards", icon: CreditCard, label: "My Card" },
     { path: "/strowallet-cards", icon: CreditCard, label: "Strowallet Cards" },
+    { path: "/customers", icon: Users, label: "Customers" },
     { path: "/deposits", icon: DollarSign, label: "Add Money" },
     { path: "/transactions", icon: ArrowUpDown, label: "Transactions" },
     { path: "/profile", icon: UserCircle, label: "My Profile" },

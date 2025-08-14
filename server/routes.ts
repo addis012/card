@@ -95,6 +95,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
+  // Production card creation endpoint
+  app.post("/api/cards/production", async (req, res) => {
+    try {
+      const { userId, nameOnCard, customerEmail, amount = "10", cardType = "visa", mode = "production" } = req.body;
+
+      if (!userId || !nameOnCard || !customerEmail) {
+        return res.status(400).json({ message: "userId, nameOnCard, and customerEmail are required" });
+      }
+
+      // Create production card directly through our service
+      const strowalletService = new StrowalletService();
+      
+      try {
+        const strowalletCard = await strowalletService.createCard({
+          name_on_card: nameOnCard,
+          card_type: cardType,
+          public_key: process.env.STROWALLET_PUBLIC_KEY || "",
+          amount: amount,
+          customerEmail: customerEmail,
+          mode: mode === "sandbox" ? "sandbox" : undefined // Only include mode for sandbox
+        });
+
+        // Save to database
+        const cardData = insertCardSchema.parse({
+          userId: userId,
+          cardNumber: strowalletCard.card_id,
+          nameOnCard: nameOnCard,
+          cardType: "virtual",
+          status: strowalletCard.status === "pending" ? "pending" : "active",
+          balance: amount,
+          spendingLimit: "1000.00",
+          strowalletCardId: strowalletCard.card_id,
+          expiryDate: `${strowalletCard.expiry_month}/${strowalletCard.expiry_year}`,
+          cvv: strowalletCard.cvv
+        });
+
+        const card = await storage.createCard(cardData);
+        
+        res.status(201).json({
+          success: true,
+          message: "Production card created successfully",
+          card: card,
+          strowalletResponse: strowalletCard
+        });
+      } catch (strowalletError) {
+        console.error("Strowallet API error:", strowalletError);
+        
+        // If Strowallet fails, still create a record in our database for tracking
+        const fallbackCardData = insertCardSchema.parse({
+          userId: userId,
+          cardNumber: `PENDING_${Date.now()}`,
+          nameOnCard: nameOnCard,
+          cardType: "virtual",
+          status: "pending",
+          balance: amount,
+          spendingLimit: "1000.00"
+        });
+
+        const card = await storage.createCard(fallbackCardData);
+        
+        res.status(202).json({
+          success: false,
+          message: "Card creation requested but Strowallet API unavailable. Saved for manual processing.",
+          card: card,
+          error: strowalletError instanceof Error ? strowalletError.message : "Unknown error"
+        });
+      }
+    } catch (error) {
+      console.error("Production card creation error:", error);
+      res.status(500).json({ message: "Failed to create production card" });
+    }
+  });
+
   // Admin: Create card via Strowallet API based on KYC documents
   app.post("/api/admin/create-card", requireAdmin, async (req, res) => {
     try {

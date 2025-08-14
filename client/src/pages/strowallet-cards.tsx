@@ -16,6 +16,12 @@ interface StrowalletCard {
   cardUserId: string;
   amount: string;
   mode: string;
+  balance?: number;
+  cardNumber?: string;
+  expiryMonth?: string;
+  expiryYear?: string;
+  cvv?: string;
+  note?: string;
 }
 
 export default function StrowalletCards() {
@@ -139,10 +145,26 @@ export default function StrowalletCards() {
                       <p className="font-semibold text-lg">{card.nameOnCard}</p>
                     </div>
                     
+                    {card.cardNumber && card.cardNumber !== "****" && (
+                      <div className="mb-2">
+                        <p className="text-xs opacity-80">CARD NUMBER</p>
+                        <p className="font-mono text-sm">**** **** **** {card.cardNumber.slice(-4)}</p>
+                      </div>
+                    )}
+                    
                     <div className="flex justify-between items-end">
                       <div>
-                        <p className="text-xs opacity-80">CREATED</p>
-                        <p className="text-sm">{card.createdDate}</p>
+                        {card.expiryMonth && card.expiryYear && card.expiryMonth !== "**" ? (
+                          <div>
+                            <p className="text-xs opacity-80">EXPIRES</p>
+                            <p className="text-sm">{card.expiryMonth}/{card.expiryYear}</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-xs opacity-80">CREATED</p>
+                            <p className="text-sm">{card.createdDate}</p>
+                          </div>
+                        )}
                       </div>
                       <div className="text-2xl font-bold opacity-50">VISA</div>
                     </div>

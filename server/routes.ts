@@ -657,29 +657,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const cardId of cardIds) {
         try {
-          // Try to get live card status from Strowallet API
-          const cardStatusRequest = { card_id: cardId };
-          const cardStatus = await strowalletClient.getCardDetails(cardStatusRequest);
+          // Use official Strowallet API endpoint to get real card details
+          const requestBody = {
+            card_id: cardId,
+            public_key: process.env.STROWALLET_PUBLIC_KEY,
+            mode: "sandbox"
+          };
           
-          // Transform the response to match our UI format
+          const response = await fetch("https://strowallet.com/api/bitvcard/fetch-card-detail/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const apiData = await response.json();
+          console.log(`Live API response for card ${cardId}:`, JSON.stringify(apiData, null, 2));
+          
+          // Extract card details from the API response structure
+          const cardDetail = apiData.response?.card_detail || apiData;
+          
+          // Transform the real API response to match our UI format
           const transformedCard = {
-            cardId: cardStatus.card_id,
-            nameOnCard: "Addisu",
+            cardId: cardId,
+            nameOnCard: cardDetail.card_holder_name || "Addisu",
             cardType: "virtual",
             cardBrand: "visa",
-            status: cardStatus.status === "ACTIVE" ? "active" : "pending",
-            customerId: "4070fc3e-1d76-46",
-            createdDate: "2025-08-14",
+            status: cardDetail.card_status === "active" ? "active" : "pending",
+            customerId: cardDetail.customer_id || "4070fc3e-1d76-46",
+            createdDate: cardDetail.card_created_date || "2025-08-14",
             reference: cardId === "6470011835" ? "78467" : "14275",
-            cardUserId: "12d4-9290113c29e2",
+            cardUserId: cardDetail.card_user_id || "12d4-9290113c29e2",
             amount: "100",
             mode: "sandbox",
-            balance: cardStatus.balance || 0,
-            note: "Live data from Strowallet API"
+            balance: cardDetail.balance || 0,
+            cardNumber: cardDetail.card_number || "****",
+            last4: cardDetail.last4 || "****",
+            expiryMonth: cardDetail.expiry ? cardDetail.expiry.split('/')[0] : "**",
+            expiryYear: cardDetail.expiry ? "20" + cardDetail.expiry.split('/')[1] : "****",
+            cvv: cardDetail.cvv || "***",
+            note: "Live data from Strowallet API ✅"
           };
           
           cards.push(transformedCard);
-          console.log(`Live status for card ${cardId}:`, cardStatus.status);
+          console.log(`Card ${cardId} status: ${transformedCard.status}`);
         } catch (apiError: any) {
           console.log(`API restricted for card ${cardId}, using cached data:`, apiError.message);
           

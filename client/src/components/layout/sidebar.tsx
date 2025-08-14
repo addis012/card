@@ -25,6 +25,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const menuItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/cards", icon: CreditCard, label: "My Card" },
+    { path: "/strowallet-cards", icon: CreditCard, label: "Strowallet Cards" },
     { path: "/deposits", icon: DollarSign, label: "Add Money" },
     { path: "/transactions", icon: ArrowUpDown, label: "Transactions" },
     { path: "/profile", icon: UserCircle, label: "My Profile" },

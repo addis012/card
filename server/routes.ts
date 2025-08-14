@@ -649,6 +649,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get created Strowallet cards
+  app.get("/api/strowallet-cards", async (req, res) => {
+    try {
+      // For demo purposes, return the cards we've created
+      // In a real app, this would come from your database
+      const createdCards = [
+        {
+          cardId: "6470011835",
+          nameOnCard: "Addisu",
+          cardType: "virtual",
+          cardBrand: "visa",
+          status: "pending",
+          customerId: "4070fc3e-1d76-46",
+          createdDate: "2025-08-14",
+          reference: "78467",
+          cardUserId: "12d4-9290113c29e2",
+          amount: "100",
+          mode: "sandbox"
+        },
+        {
+          cardId: "7084755120",
+          nameOnCard: "Addisu", 
+          cardType: "virtual",
+          cardBrand: "visa",
+          status: "pending",
+          customerId: "4070fc3e-1d76-46",
+          createdDate: "2025-08-14",
+          reference: "14275",
+          cardUserId: "12d4-9290113c29e2", 
+          amount: "100",
+          mode: "sandbox"
+        }
+      ];
+
+      res.json({
+        success: true,
+        message: "Strowallet cards created successfully",
+        cards: createdCards,
+        totalCards: createdCards.length
+      });
+    } catch (error) {
+      console.error("Error fetching Strowallet cards:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch cards"
+      });
+    }
+  });
+
   // Debug endpoint to check real Strowallet data
   app.get("/api/debug/strowallet", async (req, res) => {
     try {

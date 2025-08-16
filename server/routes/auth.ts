@@ -5,26 +5,29 @@ import { insertUserSchema, insertStrowalletCustomerSchema } from "@shared/schema
 import { z } from "zod";
 import bcrypt from "bcrypt";
 
-// Extended registration schema
-const fullRegistrationSchema = insertUserSchema.extend({
+// Extended registration schema that matches frontend form fields
+const fullRegistrationSchema = z.object({
+  // User account fields
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
   // Strowallet customer fields
   publicKey: z.string(),
-  customerEmail: z.string().email(), // This will be mapped to email field
-  phoneNumber: z.string(),
-  dateOfBirth: z.string(),
-  idNumber: z.string(),
-  idType: z.string(),
-  houseNumber: z.string(),
-  line1: z.string(),
-  city: z.string(),
-  state: z.string(),
-  zipCode: z.string(),
-  country: z.string(),
-  idImage: z.string(),
-  userPhoto: z.string(),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  customerEmail: z.string().email("Invalid email format"),
+  phoneNumber: z.string().min(1, "Phone number is required"),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  idNumber: z.string().min(1, "ID number is required"),
+  idType: z.string().min(1, "ID type is required"),
+  houseNumber: z.string().min(1, "House number is required"),
+  line1: z.string().min(1, "Address line 1 is required"),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  zipCode: z.string().min(1, "Zip code is required"),
+  country: z.string().min(1, "Country is required"),
+  idImage: z.string().min(1, "ID image is required"),
+  userPhoto: z.string().min(1, "User photo is required"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],

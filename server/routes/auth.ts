@@ -121,28 +121,30 @@ export function registerAuthRoutes(app: Express) {
         const strowalletAPI = new StrowalletAPIService();
         try {
           const strowalletResponse = await strowalletAPI.createCustomer({
+            houseNumber: validatedData.houseNumber,
             firstName: validatedData.firstName,
             lastName: validatedData.lastName,
+            idNumber: validatedData.idNumber,
             customerEmail: validatedData.customerEmail,
             phoneNumber: StrowalletAPIService.formatPhoneNumber(validatedData.phoneNumber),
             dateOfBirth: StrowalletAPIService.formatDateOfBirth(validatedData.dateOfBirth),
-            idNumber: validatedData.idNumber,
-            idType: validatedData.idType as "BVN" | "NIN" | "PASSPORT",
             idImage: validatedData.idImage,
             userPhoto: validatedData.userPhoto,
             line1: validatedData.line1,
-            houseNumber: validatedData.houseNumber,
-            city: validatedData.city,
             state: validatedData.state,
             zipCode: validatedData.zipCode,
-            country: validatedData.country
+            city: validatedData.city,
+            country: validatedData.country,
+            idType: validatedData.idType as "BVN" | "NIN" | "PASSPORT"
           });
 
-          // Update with Strowallet customer ID
+          // Update with Strowallet customer data
           await storage.updateStrowalletCustomer(strowalletCustomer.id, {
-            strowalletCustomerId: strowalletResponse.customer_id,
+            strowalletCustomerId: strowalletResponse.customerId || strowalletResponse.id,
             status: 'created'
           });
+          
+          console.log("StroWallet customer created successfully:", strowalletResponse);
 
           // Update user KYC status to approved if Strowallet creation succeeded
           await storage.updateUser(user.id, { kycStatus: 'approved' });

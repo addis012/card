@@ -9,11 +9,10 @@ import bcrypt from "bcrypt";
 const fullRegistrationSchema = insertUserSchema.extend({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string(),
   // Strowallet customer fields
   publicKey: z.string(),
-  firstName: z.string(),
-  lastName: z.string(),
-  customerEmail: z.string().email(),
+  customerEmail: z.string().email(), // This will be mapped to email field
   phoneNumber: z.string(),
   dateOfBirth: z.string(),
   idNumber: z.string(),
@@ -26,6 +25,9 @@ const fullRegistrationSchema = insertUserSchema.extend({
   country: z.string(),
   idImage: z.string(),
   userPhoto: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 export function registerAuthRoutes(app: Express) {
@@ -82,16 +84,16 @@ export function registerAuthRoutes(app: Express) {
       // Hash password
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
-      // Create user account
+      // Create user account - map customerEmail to email
       const user = await storage.createUser({
         username: validatedData.username,
         password: hashedPassword,
-        email: validatedData.customerEmail,
+        email: validatedData.customerEmail, // Map customerEmail to email field
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         phone: validatedData.phoneNumber,
-        role: 'user',
-        kycStatus: 'pending'
+        role: 'user' as const,
+        kycStatus: 'pending' as const
       });
 
       // Create Strowallet customer record

@@ -52,7 +52,7 @@ export default function CustomersPage() {
     city: "",
     state: "",
     zipCode: "",
-    country: "Ethiopia",
+    country: "ET",
     idImage: "",
     userPhoto: ""
   });
@@ -89,7 +89,7 @@ export default function CustomersPage() {
         city: "",
         state: "",
         zipCode: "",
-        country: "Ethiopia",
+        country: "ET",
         idImage: "",
         userPhoto: ""
       });
@@ -329,9 +329,9 @@ export default function CustomersPage() {
                 <Label htmlFor="country">Country *</Label>
                 <Input
                   id="country"
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  required
+                  value="Ethiopia"
+                  disabled
+                  className="bg-gray-50 text-gray-600 cursor-not-allowed"
                 />
               </div>
 

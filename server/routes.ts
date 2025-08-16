@@ -114,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create production card directly through our service
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
       
       try {
         const strowalletCard = await strowalletService.createCard({
@@ -294,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update Strowallet card status if we have the ID
       if (card.strowalletCardId) {
         try {
-          const strowalletService = new StrowalletService();
+          const strowalletService = new StrowalletAPIService();
           await strowalletService.updateCardStatus(card.strowalletCardId, "ACTIVE");
         } catch (strowalletError) {
           console.error("Error updating Strowallet card status:", strowalletError);
@@ -815,7 +815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/debug/strowallet", async (req, res) => {
     try {
       // Test various endpoints to find working ones
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
 
       const testEndpoints = [
         "/api/bitvcard/fetch-card-detail/",
@@ -895,7 +895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Card is not linked to Strowallet" });
       }
 
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
       const transactionsResponse = await strowalletService.getCardTransactions({
         card_id: card.strowalletCardId,
         limit,
@@ -929,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Card is not linked to Strowallet" });
       }
 
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
       const fundingResponse = await strowalletService.fundCard({
         card_id: card.strowalletCardId,
         amount: parseFloat(amount),
@@ -966,7 +966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Card is not linked to Strowallet" });
       }
 
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
       const cardDetails = await strowalletService.getCardDetails({
         card_id: card.strowalletCardId,
       });
@@ -1007,7 +1007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Card is not linked to Strowallet" });
       }
 
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
       const newStatus = blocked ? "BLOCKED" : "ACTIVE";
 
       await strowalletService.updateCardStatus(card.strowalletCardId, newStatus);
@@ -1095,7 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Create card via Strowallet API
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
       const strowalletRequest = {
         name_on_card: validatedData.nameOnCard || "Card Holder",
         card_type: "visa",
@@ -1396,7 +1396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Fetch and import transactions
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
       try {
         const response = await fetch("https://strowallet.com/api/bitvcard/card-transactions", {
           method: "POST",
@@ -1865,7 +1865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Initialize Strowallet service
-      const strowalletService = new StrowalletService();
+      const strowalletService = new StrowalletAPIService();
 
       // Create card via Strowallet API with address information
       const cardHolderName = nameOnCard || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;

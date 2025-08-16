@@ -95,22 +95,49 @@ export default function CustomersPage() {
       });
       
       const result = data.strowalletResult;
-      if (result.success) {
+      const customer = data.customer;
+      
+      if (result && result.success !== false && result.customer_id) {
+        // StroWallet registration successful
         toast({
-          title: "Success",
-          description: `Customer created successfully! Strowallet Customer ID: ${result.data?.customer_id || 'N/A'}`
+          title: "✅ Registration Complete",
+          description: `Customer registered successfully! StroWallet ID: ${result.customer_id}. Status: Pending verification.`,
+          className: "border-green-200 bg-green-50"
+        });
+      } else if (customer && customer.status === "failed" && result && result.message) {
+        // StroWallet failed but customer saved locally
+        toast({
+          title: "📋 Registration Saved",
+          description: `Customer saved locally. StroWallet verification pending. Error: ${result.message}`,
+          className: "border-yellow-200 bg-yellow-50"
         });
       } else {
+        // Generic success
         toast({
-          title: "Partial Success",
-          description: `Customer saved locally. Strowallet API: ${result.message || 'Customer may already exist'}`
+          title: "✅ Registration Complete", 
+          description: "Customer registered successfully. Pending verification.",
+          className: "border-green-200 bg-green-50"
         });
       }
     },
     onError: (error: any) => {
+      console.error('Customer creation error:', error);
+      
+      // Parse error message for better user feedback
+      let errorMessage = "Failed to create customer";
+      if (error.message) {
+        if (error.message.includes('BVN is required')) {
+          errorMessage = "BVN (Bank Verification Number) is required for Nigerian customers. Please update your ID type and number.";
+        } else if (error.message.includes('validation')) {
+          errorMessage = "Please check all required fields and try again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to create customer",
+        title: "❌ Registration Failed",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -124,13 +151,13 @@ export default function CustomersPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'created':
-        return <Badge variant="default" className="bg-green-500">Created</Badge>;
+        return <Badge variant="default" className="bg-green-500">✅ Registered - Pending Verification</Badge>;
       case 'pending':
-        return <Badge variant="outline">Pending</Badge>;
+        return <Badge variant="outline" className="bg-yellow-50 border-yellow-300">📋 Pending Registration</Badge>;
       case 'failed':
-        return <Badge variant="destructive">Failed</Badge>;
+        return <Badge variant="destructive">❌ Registration Failed</Badge>;
       default:
-        return <Badge variant="secondary">Unknown</Badge>;
+        return <Badge variant="secondary">❓ Unknown Status</Badge>;
     }
   };
 

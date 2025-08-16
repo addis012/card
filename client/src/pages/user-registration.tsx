@@ -63,7 +63,7 @@ export default function UserRegistration() {
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(fullRegistrationSchema),
     defaultValues: {
-      publicKey: process.env.VITE_STROWALLET_PUBLIC_KEY || "",
+      publicKey: import.meta.env.VITE_STROWALLET_PUBLIC_KEY || "",
       firstName: "",
       lastName: "",
       customerEmail: "",

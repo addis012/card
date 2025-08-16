@@ -29,8 +29,6 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, Upload, User, CreditCard, FileText, MapPin } from "lucide-react";
-import { insertStrowalletCustomerSchema } from "@shared/schema";
-
 const registrationSteps = [
   { id: 1, title: "Personal Info", icon: User },
   { id: 2, title: "Address", icon: MapPin },
@@ -38,11 +36,29 @@ const registrationSteps = [
   { id: 4, title: "Complete", icon: CheckCircle },
 ];
 
-// Extended schema for the full registration form
-const fullRegistrationSchema = insertStrowalletCustomerSchema.extend({
+// Frontend registration schema that matches the backend exactly
+const fullRegistrationSchema = z.object({
+  // User account fields
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
+  // Strowallet customer fields
+  publicKey: z.string(),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  customerEmail: z.string().email("Invalid email format"),
+  phoneNumber: z.string().min(1, "Phone number is required"),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  idNumber: z.string().min(1, "ID number is required"),
+  idType: z.string().min(1, "ID type is required"),
+  houseNumber: z.string().min(1, "House number is required"),
+  line1: z.string().min(1, "Address line 1 is required"),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  zipCode: z.string().min(1, "Zip code is required"),
+  country: z.string().min(1, "Country is required"),
+  idImage: z.string().min(1, "ID image is required"),
+  userPhoto: z.string().min(1, "User photo is required"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],

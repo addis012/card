@@ -97,25 +97,27 @@ export default function CustomersPage() {
       const result = data.strowalletResult;
       const customer = data.customer;
       
-      if (result && result.success !== false && result.customer_id) {
+      console.log('Registration response:', { result, customer }); // Debug log
+      
+      if (result && result.success === true && result.response && result.response.customerId) {
         // StroWallet registration successful
         toast({
           title: "✅ Registration Complete",
-          description: `Customer registered successfully! StroWallet ID: ${result.customer_id}. Status: Pending verification.`,
+          description: `Customer registered successfully with StroWallet! ID: ${result.response.customerId}. Ready for card creation.`,
           className: "border-green-200 bg-green-50"
         });
-      } else if (customer && customer.status === "failed" && result && result.message) {
+      } else if (result && result.success === false) {
         // StroWallet failed but customer saved locally
         toast({
           title: "📋 Registration Saved",
-          description: `Customer saved locally. StroWallet verification pending. Error: ${result.message}`,
+          description: `Customer saved locally. StroWallet error: ${result.message || 'API issue'}. You can retry later.`,
           className: "border-yellow-200 bg-yellow-50"
         });
       } else {
         // Generic success
         toast({
           title: "✅ Registration Complete", 
-          description: "Customer registered successfully. Pending verification.",
+          description: "Customer registered successfully. Status: Pending verification.",
           className: "border-green-200 bg-green-50"
         });
       }

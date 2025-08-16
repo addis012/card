@@ -58,11 +58,13 @@ export function registerStrowalletRoutes(app: Express) {
         console.log("StroWallet API response:", strowalletResult);
         
         // Update customer record with StroWallet customer ID if successful
-        if (strowalletResult && strowalletResult.customer_id) {
-          validatedData.strowalletCustomerId = strowalletResult.customer_id;
+        if (strowalletResult && strowalletResult.success === true && strowalletResult.response && strowalletResult.response.customerId) {
+          validatedData.strowalletCustomerId = strowalletResult.response.customerId;
           validatedData.status = "created";
-        } else {
+        } else if (strowalletResult && strowalletResult.success === false) {
           validatedData.status = "failed";
+        } else {
+          validatedData.status = "pending";
         }
       } catch (strowalletError) {
         console.error("StroWallet API error:", strowalletError);

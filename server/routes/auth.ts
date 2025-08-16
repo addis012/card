@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../hybrid-storage";
-import { StrowalletService } from "../strowallet";
+import { StrowalletAPIService } from "../strowallet-api";
 import { insertUserSchema, insertStrowalletCustomerSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcrypt";
@@ -117,18 +117,17 @@ export function registerAuthRoutes(app: Express) {
           status: 'pending'
         });
 
-        // Try to create customer in Strowallet
-        const strowalletService = new StrowalletService();
+        // Try to create customer in Strowallet using official API
+        const strowalletAPI = new StrowalletAPIService();
         try {
-          const strowalletResponse = await strowalletService.createCustomer({
-            public_key: validatedData.publicKey,
+          const strowalletResponse = await strowalletAPI.createCustomer({
             firstName: validatedData.firstName,
             lastName: validatedData.lastName,
             customerEmail: validatedData.customerEmail,
-            phoneNumber: validatedData.phoneNumber,
-            dateOfBirth: validatedData.dateOfBirth,
+            phoneNumber: StrowalletAPIService.formatPhoneNumber(validatedData.phoneNumber),
+            dateOfBirth: StrowalletAPIService.formatDateOfBirth(validatedData.dateOfBirth),
             idNumber: validatedData.idNumber,
-            idType: validatedData.idType,
+            idType: validatedData.idType as "BVN" | "NIN" | "PASSPORT",
             idImage: validatedData.idImage,
             userPhoto: validatedData.userPhoto,
             line1: validatedData.line1,
@@ -222,6 +221,8 @@ export function registerAuthRoutes(app: Express) {
         id: user.id,
         username: user.username,
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role
       };
 
@@ -277,7 +278,9 @@ export function registerAuthRoutes(app: Express) {
 
   // User logout
   app.post("/api/auth/logout", (req, res) => {
-    req.session.user = null;
+    if (req.session) {
+      req.session.user = undefined;
+    }
     res.json({ message: "Logged out successfully" });
   });
 

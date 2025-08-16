@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./hybrid-storage";
-import { StrowalletService } from "./strowallet";
+import { StrowalletAPIService } from "./strowallet-api";
 import {
   insertCardSchema,
   insertTransactionSchema,
@@ -14,6 +14,7 @@ import { z } from "zod";
 import bcrypt from "bcrypt";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerAuthRoutes } from "./routes/auth";
+import { registerWebhookHandler } from "./webhook-handler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const DEFAULT_USER_ID = 'user-1'; // For demo purposes
@@ -21,6 +22,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register modular routes
   registerAdminRoutes(app);
   registerAuthRoutes(app);
+  registerWebhookHandler(app);
 
   // Get all cards for the current user
   app.get("/api/cards", async (req, res) => {
@@ -202,52 +204,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Initialize Strowallet service
-      const strowalletService = new StrowalletService();
+      // Initialize Strowallet API service
+      const strowalletAPI = new StrowalletAPIService();
 
       // Create card via Strowallet API
       const cardHolderName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
-      console.log("About to call Strowallet API with user:", JSON.stringify(user, null, 2));
-      console.log("Card holder name:", cardHolderName);
+      console.log("Creating card via StroWallet API for user:", user.email);
 
-      // Use direct API call instead of service for better error handling
-      const strowalletResponse = await fetch('https://strowallet.com/api/bitvcard/create-card', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.STROWALLET_SECRET_KEY}`,
-          'X-Public-Key': process.env.STROWALLET_PUBLIC_KEY || "",
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customer_id: "8023f891-9583-43be-9dd2-95b3b1ea52c6",
-          customer_name: cardHolderName,
-          customerEmail: user.email || `${user.username}@example.com`,
-          amount: spendingLimit || 100,
-          public_key: process.env.STROWALLET_PUBLIC_KEY,
-          card_type: 'virtual'
-        })
-      });
-
-      const strowalletText = await strowalletResponse.text();
       let strowalletCard;
-
       try {
-        strowalletCard = JSON.parse(strowalletText);
-      } catch {
-        console.log("Non-JSON Strowallet response:", strowalletText.substring(0, 200));
-        // Create a mock card if Strowallet fails
+        strowalletCard = await strowalletAPI.createCard({
+          name_on_card: cardHolderName,
+          card_type: "visa",
+          amount: (spendingLimit || 100).toString(),
+          customerEmail: user.email || `${user.username}@example.com`,
+        });
+        
+        console.log("StroWallet card created successfully:", strowalletCard);
+      } catch (strowalletError) {
+        console.error("StroWallet API error:", strowalletError);
+        // Create a mock card for development/testing
         strowalletCard = {
           card_number: `4532${Math.random().toString().substring(2, 14)}`,
           expiry_month: "12",
           expiry_year: "2028",
           cvv: Math.floor(100 + Math.random() * 900).toString(),
           card_id: `sw_${Date.now()}`,
-          balance: "0.00"
+          balance: "0.00",
+          masked_number: `**** **** **** ${Math.random().toString().substring(2, 6)}`
         };
+        console.log("Using mock card data for development");
       }
-
-      console.log("Strowallet response status:", strowalletResponse.status);
-      console.log("Strowallet response:", JSON.stringify(strowalletCard, null, 2));
 
       console.log("Received response from Strowallet:", JSON.stringify(strowalletCard, null, 2));
 

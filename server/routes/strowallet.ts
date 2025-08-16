@@ -1,7 +1,107 @@
 import type { Express } from "express";
 import { StrowalletAPIService } from "../strowallet-api";
+import { storage } from "../hybrid-storage";
+import { insertStrowalletCustomerSchema } from "@shared/schema";
+import { z } from "zod";
 
 export function registerStrowalletRoutes(app: Express) {
+  // Get all StroWallet customers (for customer management page)
+  app.get("/api/strowallet/customers", async (req, res) => {
+    try {
+      // Get customers from our local database
+      const customers = await storage.getAllStrowalletCustomers();
+      
+      res.json(customers);
+    } catch (error) {
+      console.error("Error fetching StroWallet customers:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch customers",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Create new StroWallet customer
+  app.post("/api/strowallet/customers", async (req, res) => {
+    try {
+      const strowalletAPI = new StrowalletAPIService();
+      
+      // Validate the request data
+      const validatedData = insertStrowalletCustomerSchema.parse({
+        ...req.body,
+        userId: req.session?.user?.id || 'default-user',
+        publicKey: process.env.STROWALLET_PUBLIC_KEY || ""
+      });
+
+      // Create customer in StroWallet API
+      let strowalletResult;
+      try {
+        strowalletResult = await strowalletAPI.createCustomer({
+          houseNumber: validatedData.houseNumber,
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName,
+          idNumber: validatedData.idNumber,
+          customerEmail: validatedData.customerEmail,
+          phoneNumber: validatedData.phoneNumber,
+          dateOfBirth: validatedData.dateOfBirth,
+          idImage: validatedData.idImage,
+          userPhoto: validatedData.userPhoto,
+          line1: validatedData.line1,
+          state: validatedData.state,
+          zipCode: validatedData.zipCode,
+          city: validatedData.city,
+          country: validatedData.country,
+          idType: validatedData.idType as "BVN" | "NIN" | "PASSPORT"
+        });
+        
+        console.log("StroWallet API response:", strowalletResult);
+        
+        // Update customer record with StroWallet customer ID if successful
+        if (strowalletResult && strowalletResult.customer_id) {
+          validatedData.strowalletCustomerId = strowalletResult.customer_id;
+          validatedData.status = "created";
+        } else {
+          validatedData.status = "failed";
+        }
+      } catch (strowalletError) {
+        console.error("StroWallet API error:", strowalletError);
+        strowalletResult = {
+          success: false,
+          message: strowalletError instanceof Error ? strowalletError.message : "StroWallet API error"
+        };
+        validatedData.status = "failed";
+      }
+
+      // Save customer to our local database regardless of StroWallet success
+      const customer = await storage.createStrowalletCustomer(validatedData);
+      
+      res.status(201).json({
+        success: true,
+        message: "Customer created successfully",
+        customer: customer,
+        strowalletResult: strowalletResult
+      });
+
+    } catch (error) {
+      console.error("Error creating StroWallet customer:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid customer data",
+          errors: error.errors
+        });
+      }
+      
+      res.status(500).json({
+        success: false,
+        message: "Failed to create customer",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Get all customers from StroWallet
   app.get("/api/admin/strowallet-customers", async (req, res) => {
     try {

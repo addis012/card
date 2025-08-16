@@ -29,6 +29,45 @@ const fullRegistrationSchema = insertUserSchema.extend({
 });
 
 export function registerAuthRoutes(app: Express) {
+  // Simple user registration for testing
+  app.post("/api/auth/register-simple", async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+
+      // Create user account
+      const user = await storage.createUser(userData);
+
+      res.status(201).json({
+        message: "User created successfully",
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          kycStatus: user.kycStatus
+        }
+      });
+
+    } catch (error) {
+      console.error("Simple registration error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid registration data", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
   // User registration with Strowallet integration
   app.post("/api/auth/register-full", async (req, res) => {
     try {

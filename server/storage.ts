@@ -99,6 +99,23 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.users.set(adminId, admin);
+
+    // Add test user
+    const testUserId = randomUUID();
+    const testUser: User = {
+      id: testUserId,
+      username: "testuser",
+      password: "$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPDw/mi2.W", // test123
+      email: "test@example.com",
+      firstName: "Test",
+      lastName: "User",
+      phone: "+1234567890",
+      role: "user",
+      kycStatus: "approved",
+      kycDocuments: null,
+      createdAt: new Date(),
+    };
+    this.users.set(testUserId, testUser);
   }
 
   // User methods

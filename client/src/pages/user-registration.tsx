@@ -76,7 +76,7 @@ export default function UserRegistration() {
       city: "",
       state: "",
       zipCode: "",
-      country: "US",
+      country: "ET",
       username: "",
       password: "",
       confirmPassword: "",
@@ -314,7 +314,7 @@ export default function UserRegistration() {
                         <FormItem>
                           <FormLabel>Phone Number</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="+1234567890" data-testid="input-phone" />
+                            <Input {...field} placeholder="251912345678" data-testid="input-phone" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

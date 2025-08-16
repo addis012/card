@@ -68,10 +68,7 @@ export default function CustomersPage() {
 
   // Create customer mutation
   const createCustomer = useMutation({
-    mutationFn: (customerData: any) => apiRequest("/api/strowallet/customers", {
-      method: "POST",
-      body: customerData,
-    }),
+    mutationFn: (customerData: any) => apiRequest("/api/strowallet/customers", "POST", customerData),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/strowallet/customers"] });
       setIsCreateDialogOpen(false);

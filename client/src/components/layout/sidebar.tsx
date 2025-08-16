@@ -28,6 +28,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/cards", icon: CreditCard, label: "My Card" },
     { path: "/strowallet-cards", icon: CreditCard, label: "Strowallet Cards" },
     { path: "/customers", icon: Users, label: "Customers" },
+    { path: "/admin-customers", icon: Users, label: "Admin Customers" },
     { path: "/deposits", icon: DollarSign, label: "Add Money" },
     { path: "/transactions", icon: ArrowUpDown, label: "Transactions" },
     { path: "/profile", icon: UserCircle, label: "My Profile" },

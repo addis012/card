@@ -18,6 +18,7 @@ import CardAddress from "@/pages/card-address";
 import Profile from "@/pages/profile";
 import StrowalletCards from "@/pages/strowallet-cards";
 import Customers from "@/pages/customers";
+import AdminCustomers from "@/pages/admin-customers";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import MobileHeader from "@/components/layout/mobile-header";
@@ -46,6 +47,7 @@ function AuthenticatedRoutes() {
             <Route path="/cards/:id/address" component={CardAddress} />
             <Route path="/strowallet-cards" component={StrowalletCards} />
             <Route path="/customers" component={Customers} />
+            <Route path="/admin-customers" component={AdminCustomers} />
             <Route path="/profile" component={Profile} />
             <Route component={NotFound} />
           </Switch>

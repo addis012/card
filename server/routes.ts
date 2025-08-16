@@ -14,6 +14,7 @@ import { z } from "zod";
 import bcrypt from "bcrypt";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerAuthRoutes } from "./routes/auth";
+import { registerStrowalletRoutes } from "./routes/strowallet";
 import { registerWebhookHandler } from "./webhook-handler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -22,6 +23,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register modular routes
   registerAdminRoutes(app);
   registerAuthRoutes(app);
+  registerStrowalletRoutes(app);
   registerWebhookHandler(app);
 
   // Get all cards for the current user
